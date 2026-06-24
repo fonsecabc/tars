@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Keep the Tars server running 24/7 with auto-restart. TEMPLATE: 'make install-service'
+     fills in the /ABSOLUTE/PATH/TO/tars paths and /ABSOLUTE/PATH/TO/node/bin (from
+     'which node') — don't hand-install. See ops/launchd/README.md.
+     The agent runs tars-server-run.sh, which boots Colima + Postgres (in order) and
+     then execs the server, so the whole stack comes back on login/reboot.
+     Config/secrets come from <repo>/.env (dotenv reads it from WorkingDirectory). -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.tars.server</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/ABSOLUTE/PATH/TO/tars/ops/launchd/tars-server-run.sh</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/ABSOLUTE/PATH/TO/tars</string>
+
+  <!-- The server uses Ollama for embeddings (itself an always-on brew service). -->
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>EMBEDDING_PROVIDER</key>
+    <string>ollama</string>
+    <key>PATH</key>
+    <string>/ABSOLUTE/PATH/TO/node/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+
+  <key>StandardOutPath</key>
+  <string>/tmp/tars-server.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/tars-server.err.log</string>
+</dict>
+</plist>

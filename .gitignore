@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+*.tsbuildinfo
+coverage/
+
+# Logs
+*.log
+logs/
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+*.secret
+*.pem
+*.key
+*.cert
+credentials.json
+token.json
+
+# Local data (Postgres lives in a Docker volume; the Markdown mirror is a separate repo)
+data/
+
+# Backups & mirror — these contain the full personal brain; never commit them
+backups/
+*-backups/
+*-mirror/
+*.sql
+*.sql.gz
+*.dump
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo

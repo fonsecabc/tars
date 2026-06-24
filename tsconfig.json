@@ -1,0 +1,9 @@
+{
+  "//": "Solution file for `tsc -b` (build mode). Builds packages in dependency order.",
+  "files": [],
+  "references": [
+    { "path": "packages/core" },
+    { "path": "packages/mcp" },
+    { "path": "packages/server" }
+  ]
+}

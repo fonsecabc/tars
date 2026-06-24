@@ -1,0 +1,59 @@
+{
+  "name": "tars",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Personal memory MCP server (\"Second Brain\") — a single durable knowledge base exposed to Claude over the Model Context Protocol.",
+  "license": "MIT",
+  "author": "Caio Fonseca",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fonsecabc/tars.git"
+  },
+  "homepage": "https://github.com/fonsecabc/tars#readme",
+  "bugs": {
+    "url": "https://github.com/fonsecabc/tars/issues"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "memory",
+    "second-brain",
+    "knowledge-graph",
+    "claude",
+    "self-hosted"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@11.8.0",
+  "scripts": {
+    "build": "tsc -b",
+    "start": "node packages/server/dist/main.js",
+    "db:migrate": "node packages/server/dist/migrate.js",
+    "clean": "tsc -b --clean && rimraf \"packages/*/dist\" \"packages/*/*.tsbuildinfo\"",
+    "typecheck": "tsc -p tsconfig.check.json",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm build && pnpm test",
+    "db:up": "docker compose -f deploy/docker/docker-compose.yml up -d",
+    "db:down": "docker compose -f deploy/docker/docker-compose.yml down",
+    "db:logs": "docker compose -f deploy/docker/docker-compose.yml logs -f postgres",
+    "db:psql": "docker compose -f deploy/docker/docker-compose.yml exec postgres psql -U tars -d tars"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9",
+    "@types/node": "^24",
+    "eslint": "^9",
+    "eslint-config-prettier": "^9",
+    "prettier": "^3",
+    "rimraf": "^6",
+    "typescript": "^5",
+    "typescript-eslint": "^8",
+    "vitest": "^3"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "//": "Unified no-emit typecheck across ALL source incl. tests. `pnpm typecheck`.",
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": false,
+    "incremental": false,
+    "declaration": false,
+    "declarationMap": false,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@tars/core": ["packages/core/src/index.ts"],
+      "@tars/core/testing": ["packages/core/src/test-helpers/index.ts"],
+      "@tars/core/*": ["packages/core/src/*"],
+      "@tars/mcp": ["packages/mcp/src/index.ts"],
+      "@tars/mcp/*": ["packages/mcp/src/*"],
+      "@tars/server": ["packages/server/src/index.ts"],
+      "@tars/server/*": ["packages/server/src/*"]
+    }
+  },
+  "include": ["packages/*/src/**/*.ts"]
+}

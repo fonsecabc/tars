@@ -1,0 +1,15 @@
+packages:
+  - 'packages/*'
+
+# Force esbuild past GHSA-g7r4-m6w7-qqqr (dev-server path traversal, <0.28.1).
+# esbuild is dev-only here (transitive via vitest/vite).
+overrides:
+  esbuild: '>=0.28.1'
+
+allowBuilds:
+  esbuild: true
+
+# esbuild (a vitest dependency) needs its install script to fetch its native
+# binary; pnpm blocks dependency build scripts by default, so allow this one.
+onlyBuiltDependencies:
+  - esbuild

@@ -1,0 +1,37 @@
+{
+  "name": "@tars/server",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "rimraf dist *.tsbuildinfo",
+    "dev": "tsx watch src/main.ts",
+    "start": "node dist/main.js",
+    "migrate": "node dist/migrate.js",
+    "mirror": "node dist/mirror-once.js"
+  },
+  "dependencies": {
+    "@tars/core": "workspace:*",
+    "@tars/mcp": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1",
+    "dotenv": "^16",
+    "express": "^5",
+    "express-rate-limit": "^7",
+    "pg": "^8"
+  },
+  "devDependencies": {
+    "@types/express": "^5",
+    "@types/pg": "^8",
+    "tsx": "^4"
+  }
+}
