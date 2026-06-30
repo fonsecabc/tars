@@ -1,9 +1,11 @@
 # Briefing routine — "what do I need to check up on?"
 
-A reusable, **read-only** routine prompt for a recurring personal briefing on top of Tars
-(or any memory MCP) plus your messaging/calendar connectors. On each run it sweeps your
-inboxes and calendar, grounds every item in the brain, and produces one concise, triaged
-digest with a proposed next step per open item — but it never acts on its own.
+A reusable routine prompt for a recurring personal briefing on top of Tars (or any memory
+MCP) plus your messaging/calendar connectors. On each run it sweeps your inboxes and calendar,
+grounds every item in the brain, folds durable new facts back into the brain, and produces one
+concise, triaged digest with a proposed next step per open item. It is **read-only toward your
+connected services** — it never sends or modifies anything out in the world — but it *does*
+write the local brain (capture/reconcile + a dedup checkpoint).
 
 It's written to be **agnostic**: no names, no hardcoded accounts. Drop it into a scheduled
 task and point it at whatever connectors you have.
@@ -13,8 +15,8 @@ task and point it at whatever connectors you have.
 - **Prerequisite:** a memory MCP exposing the `memory_*` tools (Tars), plus any subset of
   messaging / team-chat / email / meetings / calendar connectors. Missing connectors are
   skipped gracefully.
-- **Schedule (suggested):** every 2 hours during waking hours — cron `0 7-23/2 * * *`
-  (local time). Tighten or widen to taste.
+- **Schedule (suggested):** once each morning — cron `0 8 * * *` (local time), a single
+  catch-up pass. Widen to a recurring sweep (e.g. `0 7-23/2 * * *`) to taste.
 - **Delivery:** the digest is the run's final message — read it in the scheduled-task run
   log. Swap in a "send to self" step if you'd rather get it on a device (note that sending
   is an outward action, so relax the read-only rule deliberately if you do).
@@ -27,16 +29,18 @@ Run the Briefing as a **multi-agent workflow** rather than one agent sweeping so
 one. Almost all the latency is I/O — reading several independent sources — so sweeping them
 concurrently is much faster; only the final triage needs to see everything at once.
 
-| Phase      | Parallelism            | Why                                                                                                                       |
-| ---------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Checkpoint | single                 | Read the last-run marker; the sweep window depends on it.                                                                 |
-| Sweep      | **fan-out per source** | The slow I/O — scan every source at once. Read-only; each grounds its own items in the brain (concurrent reads are safe). |
-| Triage     | single (barrier)       | Ranking across items, one digest, and the single checkpoint write all need the whole set.                                 |
+| Phase               | Parallelism                   | Why                                                                                                                                                |
+| ------------------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Checkpoint          | single                        | Read the last-run marker; the sweep window depends on it.                                                                                          |
+| Sweep               | **fan-out per source**        | The slow I/O — scan every source at once. Read-only toward services; each grounds its own items in the brain (concurrent reads are safe).          |
+| Reconcile + Triage  | two agents in parallel (barrier) | Both consume the full swept set. Reconcile folds durable new facts into the brain; Triage ranks, writes the digest, and makes the checkpoint write. |
 
-Because the routine is read-only, the _only_ write is the dedup checkpoint, made once in Triage
-— so there are no write races to design around. A runnable script is in _Briefing workflow
-script_ near the end of this file. Where workflow orchestration isn't available, the prompt below
-runs the sweep sequentially — slower, identical result.
+The routine writes only the local brain: Reconcile captures the durable facts surfaced this run,
+and Triage writes the dedup checkpoint. They run concurrently without racing because they touch
+disjoint entities — Reconcile writes the people / orgs / projects / events it learned about, Triage
+writes only "Routine:briefing". A runnable script is in _Briefing workflow script_ near the end of
+this file. Where workflow orchestration isn't available, the prompt below runs the sweep
+sequentially, then reconciles, then triages — slower, identical result.
 
 ## The prompt
 
@@ -44,19 +48,20 @@ This is the canonical, self-contained form (and the sequential fallback). To run
 workflow above, drive the _Briefing workflow script_ instead and keep these guardrails.
 
 ```text
-You are a personal briefing assistant running on a recurring schedule (every ~2 hours,
-waking hours). Each run produces one concise, scannable digest of everything the user needs
+You are a personal briefing assistant running once each morning (8am). The run catches the
+user up on everything from overnight and produces one concise, scannable digest of everything they need
 to attend to right now — unanswered messages, time-sensitive items, and commitments — each
 with a proposed next step. The user reads the digest in the run log, so it is your final
 message. Optimize for speed of reading: they should grasp what needs them in seconds.
 
 <read_only>
-This routine reads and proposes; it does not act. Don't send messages, create or save
-drafts, reply, react, RSVP, schedule, or modify anything in any connected service. Every
-suggestion is a proposal the user approves later, before you act on it. This matters because
-the briefing runs unattended on a timer — an action taken without the user in the loop could
-be wrong and can't be recalled. The one exception is your own dedup checkpoint in the brain
-(see <dedup>), which is internal state rather than an outward action.
+Toward any connected service this routine reads and proposes; it does not act. Don't send
+messages, create or save drafts, reply, react, RSVP, schedule, or modify anything in any
+connected service. Every suggestion is a proposal the user approves later, before you act on
+it. This matters because the briefing runs unattended on a timer — an action taken without the
+user in the loop could be wrong and can't be recalled. Writing the local brain is the deliberate
+exception: it's internal bookkeeping, not an outward action, so you DO reconcile durable new
+facts into the brain (see <capture_and_reconcile>) and update your dedup checkpoint (see <dedup>).
 </read_only>
 
 <use_the_brain>
@@ -66,6 +71,18 @@ any person, thread, project, or commitment, recall it from the brain — that's 
 "someone messaged you" into "your cofounder, re: the payment structure you owe him." If the
 brain has nothing on an item, say so plainly; inventing context is worse than admitting a gap.
 </use_the_brain>
+
+<capture_and_reconcile>
+The context you read is full of durable facts — a new person, a role change, a decision, a date.
+Fold them back into the brain so it stays the source of truth. Recall before writing and reuse
+entities by exact (type, name) — don't create twins. Capture durable facts only (identity, roles,
+relationships, decisions, plans, commitments, events — the "worth knowing next week?" test); skip
+the ephemeral traffic itself. Keep observations atomic with validFrom when known, lower confidence
+when inferring; link new entities to the user and related entities with active-voice predicates;
+correct rather than fork when a fact changed. Be idempotent — add only what's genuinely new since
+the last run, and never re-log a fact already on file. This capture is internal: it never appears
+in the digest and never touches a connected service.
+</capture_and_reconcile>
 
 <sources>
 Sweep these and surface only items that genuinely need the user — skip noise, newsletters,
@@ -91,7 +108,8 @@ the start, recall the entity "Routine:briefing" for the last-run time and the ke
 surfaced last time. Use it to bound scans to "since last run" where a source allows, and to
 mark each item new or still-pending. At the end, update "Routine:briefing" with this run's
 timestamp and the current open-item keys (e.g. "wa:<chat>", "email:<threadId>",
-"slack:<channel>:<ts>"). This checkpoint is the only thing the routine writes.
+"slack:<channel>:<ts>"). This checkpoint and the facts you reconcile (see
+<capture_and_reconcile>) are the only things the routine writes — both to the local brain.
 </dedup>
 
 <output_format>
@@ -138,18 +156,20 @@ local brain; don't send any of it to an external service.
 ## Briefing workflow script
 
 A reusable workflow. The only thing to configure is `SOURCES` — the connectors you sweep. The
-sweep fans out (read-only, each agent grounds its own items in the brain); Triage is a single
-barrier that ranks, writes the digest, and makes the one checkpoint write.
+sweep fans out (read-only toward services, each agent grounds its own items in the brain); then
+Reconcile and Triage run as two parallel agents over the full set — Reconcile folds new durable
+facts into the brain, Triage ranks, writes the digest, and makes the checkpoint write (disjoint
+entities, so no write race).
 
 ```js
 export const meta = {
   name: 'briefing',
   description:
-    'Recurring personal briefing — sweep every source in parallel, ground in the brain, emit one triaged digest (read-only)',
+    'Daily personal briefing — sweep every source in parallel, ground in the brain, reconcile new facts back into the brain, emit one triaged digest (read-only toward services)',
   phases: [
     { title: 'Checkpoint', detail: 'recall last-run time + open items' },
     { title: 'Sweep', detail: 'scan every source in parallel' },
-    { title: 'Triage', detail: 'merge, rank, write digest + checkpoint' },
+    { title: 'Reconcile + Triage', detail: 'capture new facts to the brain; merge, rank, write digest + checkpoint' },
   ],
 };
 
@@ -231,30 +251,50 @@ const sweeps = (
   )
 ).filter(Boolean);
 
-// Triage — rank across items, one digest, and the single checkpoint write.
-phase('Triage');
+// Reconcile + Triage — both consume the full swept set, run concurrently.
+// They write disjoint entities (Reconcile: people/orgs/projects/events; Triage: Routine:briefing),
+// so there is no write race. Reconcile's result is discarded; Triage's digest is the return value.
+phase('Reconcile + Triage');
 const items = sweeps.flatMap((s) => s.items || []);
 const clean = sweeps.filter((s) => (s.items || []).length === 0 && !s.note).map((s) => s.source);
-return await agent(
-  `Assemble the briefing from these brain-grounded items: ${JSON.stringify(items)}. Clean sources: ${clean.join(', ') || 'none'}. ` +
-    `Order by urgency into sections 🔴 NOW / 🟡 SOON / 🟢 FYI (omit empty ones); each item ≤3 lines, marked 🆕 new or ⏳ pending (with age). Lead with a one-line count headline; end with one "Clean: …" line. If nothing needs the user, say so in one line. ` +
-    `Then — the routine's ONLY write — update the brain entity "Routine:briefing" with this run's timestamp and the current open-item keys. Return the digest text; it is the user-facing message.`,
-  { label: 'triage', phase: 'Triage' },
-);
+
+const [, digest] = await parallel([
+  // Reconcile — fold durable new facts into the brain (internal; never surfaces in the digest).
+  () =>
+    agent(
+      `From these brain-grounded briefing items, capture into the brain any DURABLE new facts about the user's world — new people/orgs/projects, roles, relationships, decisions, plans, commitments, dates, life/work events: ${JSON.stringify(items)}. ` +
+        `Recall first and reuse entities by exact (type, name) — never create twins; keep observations atomic (one fact, validFrom when known, lower confidence when inferring); link new entities to the user and related entities with active-voice snake_case predicates; correct rather than fork when a fact changed. ` +
+        `Be idempotent: add ONLY what is genuinely new since the last run, never re-log a fact already on file — when unsure, recall and add nothing rather than duplicate. Do NOT store the ephemeral traffic itself. Write only to the local brain, never to a connected service. Return a one-line summary of what you captured (or "nothing new").`,
+      { label: 'reconcile', phase: 'Reconcile' },
+    ),
+  // Triage — rank across items, one digest, and the checkpoint write.
+  () =>
+    agent(
+      `Assemble the briefing from these brain-grounded items: ${JSON.stringify(items)}. Clean sources: ${clean.join(', ') || 'none'}. ` +
+        `Order by urgency into sections 🔴 NOW / 🟡 SOON / 🟢 FYI (omit empty ones); each item ≤3 lines, marked 🆕 new or ⏳ pending (with age). Lead with a one-line count headline; end with one "Clean: …" line. If nothing needs the user, say so in one line. ` +
+        `Then update the brain entity "Routine:briefing" with this run's timestamp and the current open-item keys (the only brain entity Triage writes; fact capture is handled separately). Return the digest text; it is the user-facing message.`,
+      { label: 'triage', phase: 'Triage' },
+    ),
+]);
+return digest;
 ```
 
 ## Notes on how this prompt is engineered
 
-- **Read-only is the one emphasized rule**, because it genuinely overrides an agent's default
-  to act — and it's stated with the reason (unattended timer, irreversibility) so the model
-  applies judgment at the edges rather than following a bare prohibition.
+- **Read-only-toward-services is the one emphasized rule**, because it genuinely overrides an
+  agent's default to act — and it's stated with the reason (unattended timer, irreversibility) so
+  the model applies judgment at the edges rather than following a bare prohibition. The brain is
+  carved out explicitly: writing the local graph is internal bookkeeping, so capture/reconcile and
+  the checkpoint are allowed while every outward action stays a proposal.
 - **`<tags>` separate concerns** (constraints, sources, dedup, format) so the model doesn't
   blur instructions with data, per current Claude 4.x guidance.
 - **The example carries the format** — one diverse sample with abstract placeholders does more
   for output consistency than paragraphs of formatting rules.
 - **Generic "e.g." connectors** keep it portable; the model uses whatever is actually
   connected and skips the rest.
-- **The workflow parallelizes the sweep, not the writes** — the sources are independent and
-  read-only, so they fan out safely; the single checkpoint write stays in the Triage barrier,
-  which also needs the whole item set to rank and dedup. (Contrast the Dream, where parallel
-  _writes_ force a dedup barrier and per-entity partitioning to stay idempotent.)
+- **The workflow parallelizes the sweep, and the two post-sweep writers run concurrently
+  without racing** — the sources fan out safely (independent, read-only toward services); then
+  Reconcile and Triage run in parallel because they write disjoint brain entities (Reconcile: the
+  people/orgs/projects it learned about; Triage: only "Routine:briefing"). Both need the whole
+  swept set, so they sit after the barrier. (Contrast the Dream, where parallel writes to
+  _overlapping_ entities force a dedup barrier and per-entity partitioning to stay idempotent.)
