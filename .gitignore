@@ -22,6 +22,10 @@ logs/
 credentials.json
 token.json
 
+# Local MCP companion config — holds machine paths + a bridge token. Ship the template
+# (.mcp.json.example), never the live file.
+.mcp.json
+
 # Local data (Postgres lives in a Docker volume; the Markdown mirror is a separate repo)
 data/
 

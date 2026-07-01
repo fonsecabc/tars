@@ -133,6 +133,16 @@ instructions. Full steps (Serve, Funnel, Cloudflare): [`deploy/tunnel/`](deploy/
 Tars exposes **13 memory tools**: remember, recall, link, get_entity, timeline, correct,
 forget, list_entities, list_types, define_type, list_predicates, export, audit.
 
+### MCP companions (optional)
+
+Tars is the memory; it gets more useful when the assistant can also read your world
+(messages, calendar, meetings, mail) and act. Copy [`.mcp.json.example`](.mcp.json.example)
+to `.mcp.json` (gitignored — it holds machine paths + a bridge token) and keep the servers
+you want. These are the ones the [routines](docs/routines/) read from and report through —
+notably **two WhatsApp accounts** doing opposite jobs (read from yours, get pinged by
+Tars's own line). Full setup, including the claude.ai OAuth connectors (Gmail, Calendar,
+Slack, Granola, Linear): [`docs/mcps.md`](docs/mcps.md). All optional — Tars works alone.
+
 ### Useful pnpm scripts
 
 | Command                                          | What it does                                              |
