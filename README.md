@@ -56,6 +56,10 @@ make doctor           # verify everything is green
 > **Tars ships EMPTY.** No names, no real data — just the engine and schema. Fixtures use
 > abstract placeholders (`Person:A`, `Project:X`). You populate it afterward.
 
+> **New here?** [`docs/onboarding.md`](docs/onboarding.md) is the full first-time runbook —
+> server, MCPs, the TARS persona, seeding the brain, and turning on the nightly/morning
+> routines, in order.
+
 `make setup` is idempotent (safe to re-run) and **detects-or-installs** everything via
 Homebrew: Node 20+ (24 recommended, pinned in `.nvmrc`), pnpm (corepack), Colima + the
 Docker CLI + Compose, and Ollama (it
@@ -167,6 +171,10 @@ exactly what data lives where under each configuration.
 
 ## Docs
 
+- [`docs/onboarding.md`](docs/onboarding.md) — Day-0 runbook: server → MCPs → persona → seed → routines.
+- [`docs/mcps.md`](docs/mcps.md) — MCP companions (WhatsApp, Slack, Gmail, Calendar, Granola, Linear, …).
+- [`docs/tars-system-prompt.md`](docs/tars-system-prompt.md) — the TARS persona + memory prompt, and how to wire it in.
+- [`docs/routines/`](docs/routines/) — Bootstrap (one-time seed), Dream (nightly), Briefing (morning).
 - [`CLAUDE.md`](CLAUDE.md) — working guide & conventions for this repo.
 - [`DECISIONS.md`](DECISIONS.md) — log of non-obvious design choices.
 - [`PRIVACY.md`](PRIVACY.md) — data handling and privacy posture.

@@ -3,6 +3,14 @@
 Tars is a self-hosted, single-user **personal memory MCP server** ("Second Brain").
 This file is the running, practical guide for working in the repo. Keep it current.
 
+## Onboarding a new user
+
+If you're asked to set Tars up end-to-end for someone (fresh clone, "get this running for
+me"), follow [`docs/onboarding.md`](docs/onboarding.md) in order: server → MCP companions →
+persona wiring → **one-time bootstrap scrape** → schedule Dream/Briefing → verify. Don't
+skip the bootstrap step — Dream and Briefing only reconcile _new_ activity since their last
+run, so a brain that never got seeded stays empty no matter how long the routines run.
+
 ## Golden rules
 
 - **Never invent personal data.** The system ships empty. Fixtures use abstract

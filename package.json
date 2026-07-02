@@ -1,6 +1,6 @@
 {
   "name": "tars",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Personal memory MCP server (\"Second Brain\") — a single durable knowledge base exposed to Claude over the Model Context Protocol.",

@@ -282,10 +282,15 @@ localhost) — and, when a tunnel is configured, on an OAuth-protected public li
 connect depends on the surface:
 
 - **Claude Code (same machine)** — add it as an HTTP MCP server pointing at
-  `http://127.0.0.1:8787/mcp`, then put the prompt in `CLAUDE.md` or custom instructions:
+  `http://127.0.0.1:8787/mcp`:
   ```bash
   claude mcp add --transport http tars http://127.0.0.1:8787/mcp
   ```
+  Then paste the **compact prompt** into `~/.claude/CLAUDE.md` — your **global** user
+  instructions, not this repo's `CLAUDE.md` — so TARS is who you talk to in every project,
+  not just this one. (A project-level `CLAUDE.md` only applies inside that project.) The
+  prompt is already generic — no names or personal details baked in — so it's copy-paste
+  ready as-is.
 - **Claude Desktop (same machine)** — Desktop speaks **stdio**, so bridge the HTTP server with
   `mcp-remote` in `claude_desktop_config.json`:
   ```json

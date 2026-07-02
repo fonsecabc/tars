@@ -26,6 +26,24 @@ Each run is **stateless**: it rediscovers its own replay window from the brain i
 `dream` marker), never from memory of a prior run. Runs are **idempotent and additive** —
 re-running over the same day converges, it does not duplicate.
 
+### Instantiating on Claude Code
+
+If Claude Code is the host, use the `/schedule` skill rather than hand-writing a cron job:
+
+1. Keep this file (`docs/routines/dream.md`) as the **abstract spec** — host-agnostic, no
+   personal details, safe to commit.
+2. Write your **personal drop-in** outside the repo, e.g. `~/tars-dream.md`: your actual
+   source list (which WhatsApp/Slack/Granola/etc. connectors), your preferred run time, and
+   "follow the routine in `docs/routines/dream.md` at `<path-to-tars-repo>`."
+3. Run `/schedule` and point it at `~/tars-dream.md` with a nightly cadence during your
+   low-activity hours (e.g. 03:30 local). Claude Code's scheduler persists this across
+   sessions and machine restarts.
+4. Before scheduling, do **one manual run** so the host pre-approves each connector's tools
+   — unattended runs otherwise pause on permission prompts.
+
+Don't run Dream before the brain has something to consolidate — do a one-time
+[bootstrap scrape](bootstrap.md) first if this is a fresh Tars instance.
+
 ## Why it's shaped like sleep
 
 Human memory is consolidated in two complementary sleep states plus an overnight

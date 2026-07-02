@@ -23,6 +23,24 @@ task and point it at whatever connectors you have.
 - **First run:** trigger it manually once to pre-approve each connector's tools, so future
   unattended runs don't pause on permission prompts.
 
+### Instantiating on Claude Code
+
+If Claude Code is the host, use the `/schedule` skill instead of a raw crontab:
+
+1. Keep this file (`docs/routines/briefing.md`) as the **abstract spec** — host-agnostic,
+   safe to commit, no personal details.
+2. Write your **personal drop-in** outside the repo, e.g. `~/tars-briefing.md`: which
+   connectors you actually have, delivery preference, and "follow the routine in
+   `docs/routines/briefing.md` at `<path-to-tars-repo>`."
+3. Run `/schedule` pointed at `~/tars-briefing.md`, cadence `0 8 * * *` (or your local
+   equivalent). The scheduler persists across sessions and machine restarts.
+4. Do the manual first run (above) before scheduling, so future unattended runs don't stall
+   on tool-permission prompts.
+
+If this is a fresh Tars instance, run the one-time [bootstrap scrape](bootstrap.md) first —
+Briefing only reconciles _new_ items since the last run, so it needs a populated brain to
+ground against.
+
 ## How it runs — a Briefing workflow
 
 Run the Briefing as a **multi-agent workflow** rather than one agent sweeping sources one by
