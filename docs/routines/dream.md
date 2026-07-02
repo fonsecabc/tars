@@ -98,16 +98,16 @@ find-or-create on the same name double-creates entities. So replay (read-only) f
 a **dedup barrier** then merges candidates across conversations; then writes fan out
 **partitioned by entity**, so no two agents ever touch the same one.
 
-| Phase             | Parallelism                  | Why                                                                       |
-| ----------------- | ---------------------------- | ------------------------------------------------------------------------ |
-| Window            | single                       | Read the last marker; everything depends on it.                          |
-| Enumerate         | **fan-out per source**       | Cheap listing — every conversation with in-window activity. Read-only.   |
-| Deep replay       | **fan-out per conversation** | The slow I/O — one full-thread reader per conversation, never sampled.    |
-| _(dedup barrier)_ | —                            | Merge candidates so one person ≠ two entities.                           |
-| Consolidate       | **fan-out per entity**       | Disjoint entities → no write races. recall-before-write each.            |
-| Integrate         | **fan-out per entity**       | All entities exist; link / abstract / reconcile each.                    |
-| Renormalize       | single (barrier)             | Merging duplicates and pruning need a cross-entity view.                 |
-| Wake              | single                       | Lay the marker + report (needs aggregate counts).                        |
+| Phase             | Parallelism                  | Why                                                                    |
+| ----------------- | ---------------------------- | ---------------------------------------------------------------------- |
+| Window            | single                       | Read the last marker; everything depends on it.                        |
+| Enumerate         | **fan-out per source**       | Cheap listing — every conversation with in-window activity. Read-only. |
+| Deep replay       | **fan-out per conversation** | The slow I/O — one full-thread reader per conversation, never sampled. |
+| _(dedup barrier)_ | —                            | Merge candidates so one person ≠ two entities.                         |
+| Consolidate       | **fan-out per entity**       | Disjoint entities → no write races. recall-before-write each.          |
+| Integrate         | **fan-out per entity**       | All entities exist; link / abstract / reconcile each.                  |
+| Renormalize       | single (barrier)             | Merging duplicates and pruning need a cross-entity view.               |
+| Wake              | single                       | Lay the marker + report (needs aggregate counts).                      |
 
 A runnable script is in _Dream workflow script_ near the end of this file (one `CONFIGURE` block
 — the `SOURCES`). It runs via a host that can orchestrate multi-agent workflows. Where that isn't
@@ -299,8 +299,14 @@ export const meta = {
 // window's conversations: return, for each, a stable `ref` a reader can re-fetch and a human label.
 const SOURCES = [
   { key: 'chat', how: '<chat app: list chats with messages in the window; ref = chat id>' },
-  { key: 'team', how: '<team workspace: DMs/channels/threads with in-window activity; ref = channel/thread id>' },
-  { key: 'sessions', how: "<your assistant's own chat transcripts: sessions active in the window; ref = session id>" },
+  {
+    key: 'team',
+    how: '<team workspace: DMs/channels/threads with in-window activity; ref = channel/thread id>',
+  },
+  {
+    key: 'sessions',
+    how: "<your assistant's own chat transcripts: sessions active in the window; ref = session id>",
+  },
   {
     key: 'meetings',
     how: '<meeting-transcript tool: meetings in the window; ref = meeting id>',
@@ -396,7 +402,9 @@ const enumed = (
   )
 ).filter(Boolean);
 const targets = enumed.flatMap((e) => (e.targets || []).map((t) => ({ ...t, source: e.source })));
-log(`enumerated ${targets.length} conversations (${enumed.map((e) => `${e.source}:${e.targets.length}`).join(', ')})`);
+log(
+  `enumerated ${targets.length} conversations (${enumed.map((e) => `${e.source}:${e.targets.length}`).join(', ')})`,
+);
 
 // Deep replay — one full-thread reader per conversation (the slow part), so nothing is sampled away.
 phase('Deep replay');
@@ -408,7 +416,11 @@ const harvests = (
           `Deep-replay ONE conversation for memory consolidation — READ ONLY, write nothing. Source: ${t.source}. Conversation: "${t.label}" (ref: ${t.ref}). Window: ${win.from} → ${win.to}. ` +
             `Read the FULL thread in the window (page through it; do not sample). Extract EVERY durable fact and relationship about the user and every person/org/project/place/event mentioned — identities, roles, contact handles, plans, decisions, commitments, preferences, opinions, life/work events, dates, money, travel, health. ` +
             `Set each fact's validFrom to when it became true (the message/meeting time) and a confidence by directness (explicit ≈ 0.9–1.0, reported ≈ 0.6–0.8, inferred ≈ 0.4–0.6). Skip pure greetings/logistics chatter. Never invent — unknown stays unknown. Return the candidate list.`,
-          { schema: HARVEST, label: `read:${t.source}:${t.label}`.slice(0, 60), phase: 'Deep replay' },
+          {
+            schema: HARVEST,
+            label: `read:${t.source}:${t.label}`.slice(0, 60),
+            phase: 'Deep replay',
+          },
         ).then((r) => ({ source: t.source, ...r })),
     ),
   )

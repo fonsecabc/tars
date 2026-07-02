@@ -4,7 +4,7 @@ A reusable routine prompt for a recurring personal briefing on top of Tars (or a
 MCP) plus your messaging/calendar connectors. On each run it sweeps your inboxes and calendar,
 grounds every item in the brain, folds durable new facts back into the brain, and produces one
 concise, triaged digest with a proposed next step per open item. It is **read-only toward your
-connected services** — it never sends or modifies anything out in the world — but it *does*
+connected services** — it never sends or modifies anything out in the world — but it _does_
 write the local brain (capture/reconcile + a dedup checkpoint).
 
 It's written to be **agnostic**: no names, no hardcoded accounts. Drop it into a scheduled
@@ -29,11 +29,11 @@ Run the Briefing as a **multi-agent workflow** rather than one agent sweeping so
 one. Almost all the latency is I/O — reading several independent sources — so sweeping them
 concurrently is much faster; only the final triage needs to see everything at once.
 
-| Phase               | Parallelism                   | Why                                                                                                                                                |
-| ------------------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Checkpoint          | single                        | Read the last-run marker; the sweep window depends on it.                                                                                          |
-| Sweep               | **fan-out per source**        | The slow I/O — scan every source at once. Read-only toward services; each grounds its own items in the brain (concurrent reads are safe).          |
-| Reconcile + Triage  | two agents in parallel (barrier) | Both consume the full swept set. Reconcile folds durable new facts into the brain; Triage ranks, writes the digest, and makes the checkpoint write. |
+| Phase              | Parallelism                      | Why                                                                                                                                                 |
+| ------------------ | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Checkpoint         | single                           | Read the last-run marker; the sweep window depends on it.                                                                                           |
+| Sweep              | **fan-out per source**           | The slow I/O — scan every source at once. Read-only toward services; each grounds its own items in the brain (concurrent reads are safe).           |
+| Reconcile + Triage | two agents in parallel (barrier) | Both consume the full swept set. Reconcile folds durable new facts into the brain; Triage ranks, writes the digest, and makes the checkpoint write. |
 
 The routine writes only the local brain: Reconcile captures the durable facts surfaced this run,
 and Triage writes the dedup checkpoint. They run concurrently without racing because they touch
@@ -169,7 +169,10 @@ export const meta = {
   phases: [
     { title: 'Checkpoint', detail: 'recall last-run time + open items' },
     { title: 'Sweep', detail: 'scan every source in parallel' },
-    { title: 'Reconcile + Triage', detail: 'capture new facts to the brain; merge, rank, write digest + checkpoint' },
+    {
+      title: 'Reconcile + Triage',
+      detail: 'capture new facts to the brain; merge, rank, write digest + checkpoint',
+    },
   ],
 };
 
