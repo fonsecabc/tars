@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Warm, always-on local Kokoro TTS sidecar for TARS's voice. Local-only, no billing. -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.tars.tts-kokoro</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/fonsecabc/.tars/tts-venv/bin/python</string>
+        <string>/Users/fonsecabc/Projects/personal /tars/voice/tars-tts-kokoro.py</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/fonsecabc/Projects/personal /tars/voice</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/Users/fonsecabc/.tars/tts-venv/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>KOKORO_PORT</key>
+        <string>8791</string>
+        <key>KOKORO_VOICE</key>
+        <string>bm_lewis</string>
+        <key>HF_HUB_OFFLINE</key>
+        <string>1</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/fonsecabc/Library/Logs/tars-tts-kokoro.out.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/fonsecabc/Library/Logs/tars-tts-kokoro.err.log</string>
+</dict>
+</plist>

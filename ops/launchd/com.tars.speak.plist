@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- TARS's TTS arbiter: queue/priority/mute/dedupe, speaks via the Kokoro sidecar
+     (falls back to macOS `say` if the sidecar is down). Independent of tars-tts-kokoro
+     so an audio crash doesn't take the model server down and vice versa. -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.tars.speak</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/node</string>
+        <string>/Users/fonsecabc/Projects/personal /tars/voice/tars-speak.mjs</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/fonsecabc/Projects/personal /tars/voice</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>SPEAK_PORT</key>
+        <string>8790</string>
+        <key>TARS_TTS_BACKEND</key>
+        <string>kokoro</string>
+        <key>KOKORO_URL</key>
+        <string>http://127.0.0.1:8791/say</string>
+        <key>OLLAMA_URL</key>
+        <string>http://localhost:11434</string>
+        <key>SPEAKIFY_MODEL</key>
+        <string>gemma2:9b</string>
+        <key>TARS_VOICE_NAME</key>
+        <!-- Emergency `say` fallback if Kokoro is unreachable: British male (Daniel),
+             so a worst-case degrade stays in the same register instead of jumping to
+             the system default (Samantha, US female) — the bug this exists to prevent. -->
+        <string>Daniel</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/fonsecabc/Library/Logs/tars-speak.out.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/fonsecabc/Library/Logs/tars-speak.err.log</string>
+</dict>
+</plist>
