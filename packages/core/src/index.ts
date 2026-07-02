@@ -28,6 +28,14 @@ export * as retrieval from './retrieval/index.js';
 export * as embeddings from './embeddings/index.js';
 export * as mirror from './mirror/index.js';
 export * as extraction from './extraction/index.js';
+export * as rerank from './rerank/index.js';
+export {
+  rerankCandidates,
+  rerankLlmFromEnv,
+  OllamaRerankLlm,
+  type RerankLlm,
+  type RerankCandidate,
+} from './rerank/index.js';
 export {
   extractFacts,
   applyProposal,

@@ -12,6 +12,7 @@ import {
   writeMirror as writeMirrorCore,
   type MirrorResult,
 } from '../mirror/index.js';
+import { rerankCandidates, type RerankLlm } from '../rerank/index.js';
 import type {
   AuditEntry,
   Entity,
@@ -67,10 +68,20 @@ export interface Memory {
 export interface MemoryOptions {
   /** Embedding provider, or null/omitted for keyword-only retrieval (zero external calls). */
   embeddings?: EmbeddingProvider | null;
+  /**
+   * Optional LLM reranker. When set, recall retrieves a larger candidate pool and the reranker
+   * reorders it before truncation — big win on relational/collision queries, at the cost of one
+   * LLM call per recall. Omit/null to return pure retrieval order (zero extra calls).
+   */
+  reranker?: RerankLlm | null;
 }
+
+/** How many candidates to retrieve for the reranker to reorder before truncating to `limit`. */
+const RERANK_POOL_SIZE = 20;
 
 export function createMemory(pool: Pool, memoryOptions: MemoryOptions = {}): Memory {
   const provider = memoryOptions.embeddings ?? null;
+  const reranker = memoryOptions.reranker ?? null;
 
   return {
     embeddingsEnabled: provider !== null,
@@ -98,7 +109,40 @@ export function createMemory(pool: Pool, memoryOptions: MemoryOptions = {}): Mem
           console.warn(`[tars] query embedding failed, keyword-only: ${String(error)}`);
         }
       }
-      return recall(pool, query, queryEmbedding ? { ...options, queryEmbedding } : options);
+      const baseOptions = queryEmbedding ? { ...options, queryEmbedding } : options;
+      if (!reranker || query.trim().length === 0) {
+        return recall(pool, query, baseOptions);
+      }
+
+      // Retrieve a wider pool, let the LLM reorder it, then truncate to the caller's limit.
+      const userLimit = Math.min(Math.max(options?.limit ?? 10, 1), 50);
+      const poolResult = await recall(pool, query, {
+        ...baseOptions,
+        limit: Math.max(userLimit, RERANK_POOL_SIZE),
+      });
+      const candidates = poolResult.entities.map((e) => ({
+        id: e.entity.id,
+        label:
+          `${e.entity.type}:${e.entity.name}` +
+          (e.observations.length > 0 ? ` — ${e.observations.map((o) => o.text).join('; ')}` : ''),
+      }));
+      let order: string[];
+      try {
+        order = await rerankCandidates(query, candidates, reranker);
+      } catch (error: unknown) {
+        console.warn(`[tars] rerank failed, retrieval order kept: ${String(error)}`);
+        order = candidates.map((c) => c.id);
+      }
+      const byId = new Map(poolResult.entities.map((e) => [e.entity.id, e]));
+      const reordered = order
+        .map((id) => byId.get(id))
+        .filter((e): e is (typeof poolResult.entities)[number] => e !== undefined)
+        .slice(0, userLimit);
+      const keptIds = new Set(reordered.map((e) => e.entity.id));
+      const relations = poolResult.relations.filter(
+        (r) => keptIds.has(r.fromEntity) && keptIds.has(r.toEntity),
+      );
+      return { query: poolResult.query, entities: reordered, relations };
     },
 
     getEntity: (id, options) => getEntity(pool, id, options),

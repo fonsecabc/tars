@@ -29,4 +29,15 @@ describe('rrfFuse', () => {
   it('handles empty lists', () => {
     expect(rankByScore(rrfFuse([[], []]))).toEqual([]);
   });
+
+  it('lets a per-list weight break a cross-list tie', () => {
+    // 'a' leads list 0, 'b' leads list 1 — symmetric, so unweighted they tie.
+    const lists = [
+      ['a', 'b'],
+      ['b', 'a'],
+    ];
+    // Weight list 0 higher: 'a' (top of the trusted list) must win.
+    const ranked = rankByScore(rrfFuse(lists, 60, [3, 1]));
+    expect(ranked[0]).toBe('a');
+  });
 });

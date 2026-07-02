@@ -7,6 +7,7 @@ import {
   createPool,
   databaseUrlFromEnv,
   embeddingProviderFromEnv,
+  rerankLlmFromEnv,
   runMigrations,
 } from '@tars/core';
 
@@ -37,7 +38,10 @@ async function main(): Promise<void> {
 
   const pool = createPool(databaseUrl);
   const provider = embeddingProviderFromEnv();
-  const memory = createMemory(pool, { embeddings: provider });
+  // Optional LLM reranker (off unless RERANK_ENABLED). Worth enabling for the small-model
+  // serving path; it adds an LLM call per recall, so it stays opt-in for the Claude Code path.
+  const reranker = rerankLlmFromEnv();
+  const memory = createMemory(pool, { embeddings: provider, reranker });
 
   // 1. Loopback listener — trusted, NO OAuth. For Claude Code on this Mac. Hard-bound to
   //    127.0.0.1 so it is unreachable from the network; the tunnel never points here.

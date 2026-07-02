@@ -4,6 +4,7 @@ export * from './correct.js';
 export * from './forget.js';
 export * from './registry.js';
 export * from './recall.js';
+export * from './render.js';
 export * from './get-entity.js';
 export * from './timeline.js';
 export * from './export.js';

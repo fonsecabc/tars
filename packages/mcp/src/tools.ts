@@ -2,8 +2,10 @@ import { isAbsolute, resolve, sep } from 'node:path';
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import type { Memory } from '@tars/core';
+import { renderRecallCompact, type Memory } from '@tars/core';
 import { z } from 'zod';
+
+import { recallDefaultsFromEnv } from './config.js';
 
 /** Run an operation and serialize its result as a single text block (errors in-band). */
 async function run(fn: () => Promise<unknown>): Promise<CallToolResult> {
@@ -61,6 +63,8 @@ function resolveMirrorDir(requested: string): string {
  * model has zero prior knowledge about the user.
  */
 export function registerMemoryTools(server: McpServer, memory: Memory): void {
+  const recallDefaults = recallDefaultsFromEnv();
+
   server.registerTool(
     'memory_remember',
     {
@@ -162,7 +166,9 @@ export function registerMemoryTools(server: McpServer, memory: Memory): void {
       description:
         'Search the personal memory. The primary read path: hybrid keyword + graph ' +
         'retrieval returning the most relevant entities, their matching observations, ' +
-        'and connecting relations. Use this before answering questions about the user.',
+        'and connecting relations. Use this before answering questions about the user. ' +
+        "Set format:'compact' for terse, id-free text bounded by maxChars — use it when " +
+        'feeding a small / local model whose context is easy to overwhelm.',
       inputSchema: {
         query: z.string().min(1),
         types: z.array(z.string()).optional().describe('Restrict to these entity types.'),
@@ -171,19 +177,50 @@ export function registerMemoryTools(server: McpServer, memory: Memory): void {
         includeGraph: z.boolean().optional().describe('Pull in connected context (default true).'),
         graphDepth: z.number().int().min(1).max(2).optional(),
         asOf: z.string().optional().describe('ISO 8601: recall facts valid at this instant.'),
+        format: z
+          .enum(['json', 'compact'])
+          .optional()
+          .describe("'json' (full, with ids) or 'compact' (terse text, no ids) for small models."),
+        maxChars: z
+          .number()
+          .int()
+          .min(200)
+          .max(20000)
+          .optional()
+          .describe('Char ceiling for compact output.'),
+        scoreFloor: z
+          .number()
+          .min(0)
+          .max(1)
+          .optional()
+          .describe(
+            'Drop weak matches below topScore*scoreFloor (0 disables). Precision over recall.',
+          ),
       },
     },
-    async (args) =>
-      run(async () => {
+    async (args) => {
+      try {
         const result = await memory.recall(args.query, {
           types: args.types,
           predicates: args.predicates,
-          limit: args.limit,
+          limit: args.limit ?? recallDefaults.limit,
           includeGraph: args.includeGraph,
-          graphDepth: args.graphDepth,
+          graphDepth: args.graphDepth ?? recallDefaults.graphDepth,
+          observationsPerEntity: recallDefaults.observationsPerEntity,
+          scoreFloor: args.scoreFloor ?? recallDefaults.scoreFloor,
+          rrfK: recallDefaults.rrfK,
           asOf: parseDate(args.asOf),
         });
-        return {
+
+        const format = args.format ?? recallDefaults.format;
+        if (format === 'compact') {
+          const text = renderRecallCompact(result, {
+            maxChars: args.maxChars ?? recallDefaults.maxChars,
+          });
+          return { content: [{ type: 'text', text }] };
+        }
+
+        const data = {
           query: result.query,
           entities: result.entities.map((e) => ({
             id: e.entity.id,
@@ -206,7 +243,12 @@ export function registerMemoryTools(server: McpServer, memory: Memory): void {
             predicate: r.predicate,
           })),
         };
-      }),
+        return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return { content: [{ type: 'text', text: `Error: ${message}` }], isError: true };
+      }
+    },
   );
 
   server.registerTool(

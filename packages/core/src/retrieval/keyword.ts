@@ -100,3 +100,29 @@ export async function keywordSearchEntities(
   );
   return res.rows.map((r) => ({ entityId: r.id, rank: r.rank }));
 }
+
+/**
+ * Entities whose name OR one of whose aliases equals the query exactly (case-insensitive).
+ * A high-precision signal: when someone types an entity's actual name/alias, that entity
+ * should win outright rather than compete on equal footing with fuzzy/semantic neighbours.
+ */
+export async function exactEntityMatches(
+  q: Queryable,
+  query: string,
+  opts: { types?: string[] } = {},
+): Promise<Uuid[]> {
+  const values: unknown[] = [query.trim()];
+  const conditions = [
+    'e.deleted_at IS NULL',
+    '(lower(e.name) = lower($1) OR EXISTS (SELECT 1 FROM unnest(e.aliases) a WHERE lower(a) = lower($1)))',
+  ];
+  if (opts.types && opts.types.length > 0) {
+    values.push(opts.types);
+    conditions.push(`e.type = ANY($${values.length}::text[])`);
+  }
+  const res = await q.query<{ id: string }>(
+    `SELECT e.id FROM entities e WHERE ${conditions.join(' AND ')}`,
+    values,
+  );
+  return res.rows.map((r) => r.id);
+}

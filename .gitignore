@@ -44,3 +44,6 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# recall benchmark scorecards (generated)
+packages/core/src/eval/results/
