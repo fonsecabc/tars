@@ -31,8 +31,11 @@ Fill this in before running:
   practical (a WhatsApp export can span years); a reasonable default is "everything
   available without an explicit date filter" for chat/email, and "all" for calendars,
   meetings, and project trackers, since those are naturally bounded.
-- **Own identity** — tell it who the user is (name, key aliases) so it can seed the `person`
-  entity for the user themselves before reconciling everyone else against it.
+- **Own identity** — who the user is (name, key aliases), so it can seed the `person` entity
+  for the user themselves before reconciling everyone else against it. You don't need to fill
+  this in by hand: the Seed phase below resolves it from whatever identity the host already
+  exposes (Claude Code's local `git config`, an injected account identity) and only asks if
+  that's ambiguous or missing.
 
 ## How it runs
 
@@ -41,7 +44,7 @@ sweep phase but wider (whole history, not a delta) and with no checkpoint to rea
 
 | Phase     | Parallelism                        | Why                                                                                                                                                                                                                                                                    |
 | --------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Seed      | single                             | Create/enrich the entity for the user themselves — everyone else links back to it.                                                                                                                                                                                     |
+| Seed      | single                             | Resolve who the user is (auto-detect, or ask once if ambiguous) and create/enrich their entity — everyone else links back to it.                                                                                                                                       |
 | Sweep     | **fan-out per source**             | Each source is independent I/O; read the full available history and extract candidates.                                                                                                                                                                                |
 | Reconcile | single (or sharded by entity type) | Fold every candidate person/org/project/event into the graph: find-or-create, add observations, link to the user and to each other. Do this after all sweeps finish — cross-source dedup (the same person in WhatsApp and Slack) needs the full candidate set at once. |
 
@@ -69,15 +72,23 @@ You are running the Tars BOOTSTRAP routine — a ONE-TIME initial scrape to seed
 memory graph. This is not a recurring job; run it once, in full, then stop.
 
 Configuration:
-- User identity: <name + key aliases>
+- User identity: <name + key aliases, if you already know them — otherwise leave blank and
+  let the Seed phase resolve it>
 - Sources to sweep: <list only the connectors actually available, e.g. "personal WhatsApp,
   Slack, Gmail, Google Calendar, Granola">
 - Depth: full available history for chat/email; all records for calendar/meetings/trackers.
 
 Do this as a multi-agent workflow with three phases:
 
-1. SEED (single agent): create or find the `person` entity for the user via memory_remember
-   with their name and known aliases. Record its id — everything below links back to it.
+1. SEED (single agent): resolve the user's identity, then create or find their `person`
+   entity. If Configuration already names them, use that. Otherwise try to resolve a name/
+   email without asking, from whatever the host environment already knows — Claude Code's
+   local `git config user.name`/`user.email`, or an account identity already present in
+   context (e.g. an injected email). Only ask the user directly ("What should I call you?")
+   if nothing resolves unambiguously — don't infer identity from connector data (e.g. a
+   WhatsApp display name) as a substitute for asking. Once resolved, memory_remember the
+   `person` entity with an observation marking it as the brain's owner. Record its id —
+   everything below links back to it.
 
 2. SWEEP (fan out one agent per configured source, all in parallel): for each source, read as
    much history as the source reasonably exposes and extract candidate entities — people,
