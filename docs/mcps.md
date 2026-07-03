@@ -3,7 +3,8 @@
 Tars is the **memory**. It gets far more useful when the assistant driving it can also
 _read your world_ (messages, calendar, meetings, mail) and _act_ (send a note, look
 something up). These are the MCP servers I run alongside Tars — the ones the
-[routines](routines/) (nightly Dream, morning briefing) read from and report through.
+[routines](routines/) (nightly Dream, morning briefing, [voice personas](routines/voice-personas.md))
+read from and report through.
 
 None of them are required to use Tars. Add the ones that fit your life; skip the rest.
 
