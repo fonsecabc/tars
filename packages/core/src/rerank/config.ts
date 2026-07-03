@@ -11,8 +11,10 @@ export function rerankLlmFromEnv(env: NodeJS.ProcessEnv = process.env): RerankLl
   if (flag !== '1' && flag !== 'true' && flag !== 'yes') {
     return null;
   }
+  const timeoutRaw = Number(env.OLLAMA_RERANK_TIMEOUT_MS);
   return new OllamaRerankLlm({
     baseUrl: env.OLLAMA_BASE_URL,
     model: env.OLLAMA_RERANK_MODEL,
+    timeoutMs: Number.isFinite(timeoutRaw) && timeoutRaw > 0 ? timeoutRaw : undefined,
   });
 }
