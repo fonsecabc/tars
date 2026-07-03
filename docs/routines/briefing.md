@@ -108,6 +108,8 @@ and anything already handled:
 - Messaging (e.g. WhatsApp): conversations whose latest message is from someone else and
   awaits a reply.
 - Team chat (e.g. Slack): DMs, @-mentions, and threads where the ball is in the user's court.
+- Social (e.g. X/Twitter): DMs and @-mentions awaiting a reply. DM reads are rate-capped
+  (15/15min on the official API) — one pass per run is enough, don't re-poll within the window.
 - Email: unread that wants a reply, plus read-but-unanswered threads. Skip automated mail
   unless it's time-sensitive (a check-in window, confirmation, or deadline).
 - Meetings (e.g. Granola): meetings since the last run that produced action items or
@@ -203,6 +205,10 @@ const SOURCES = [
   {
     key: 'team',
     how: "<team workspace: DMs, @-mentions, threads where the ball is in the user's court>",
+  },
+  {
+    key: 'social',
+    how: '<X/Twitter: DMs and @-mentions awaiting a reply; DM reads are rate-capped, one pass per run>',
   },
   {
     key: 'email',
