@@ -176,6 +176,8 @@ exactly what data lives where under each configuration.
 - [`docs/tars-system-prompt.md`](docs/tars-system-prompt.md) — the TARS persona + memory prompt, and how to wire it in.
 - [`docs/routines/`](docs/routines/) — Bootstrap (one-time seed), Dream (nightly), Briefing (morning).
 - [`CLAUDE.md`](CLAUDE.md) — working guide & conventions for this repo.
+- [`docs/routines/voice-personas.md`](docs/routines/voice-personas.md) — learn how the user
+  writes per platform (Slack, email, WhatsApp, LinkedIn, Twitter/X…) and draft in their voice.
 - [`DECISIONS.md`](DECISIONS.md) — log of non-obvious design choices.
 - [`PRIVACY.md`](PRIVACY.md) — data handling and privacy posture.
 - [`SECURITY.md`](SECURITY.md) — security model & vulnerability reporting.
