@@ -71,13 +71,13 @@ listed at the end.
 
 ## Configuration
 
-| Key            | What to set                                       | Notes                                                                                                                                                                                 |
-| -------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `SOURCES`      | The connectors to replay each night               | Any mix of messaging + meetings + your assistant's own chat transcripts — e.g. a chat app, a team workspace, email, calendar, meeting-transcript tools. List the read tools for each. |
-| `WINDOW`       | last `dream` marker → now (fallback: last 24–36h) | The day being consolidated. See _Replay window_.                                                                                                                                      |
-| `WRITE_POLICY` | `auto-apply` or `propose-then-confirm`            | Auto-apply writes directly (every write is audited and reversible); propose emits a report and waits.                                                                                 |
-| `DREAM_MARKER` | `event` entity named `Dream <YYYY-MM-DD>`         | Records what was consolidated; also the next run's window anchor.                                                                                                                     |
-| `RUN_TIME`     | a low-activity hour, in your local timezone       | e.g. nightly ~03:30.                                                                                                                                                                  |
+| Key            | What to set                                       | Notes                                                                                                                                                                                                                |
+| -------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SOURCES`      | The connectors to replay each night               | Any mix of messaging + meetings + your assistant's own chat transcripts — e.g. a chat app, a team workspace, a social/DM inbox (X/Twitter), email, calendar, meeting-transcript tools. List the read tools for each. |
+| `WINDOW`       | last `dream` marker → now (fallback: last 24–36h) | The day being consolidated. See _Replay window_.                                                                                                                                                                     |
+| `WRITE_POLICY` | `auto-apply` or `propose-then-confirm`            | Auto-apply writes directly (every write is audited and reversible); propose emits a report and waits.                                                                                                                |
+| `DREAM_MARKER` | `event` entity named `Dream <YYYY-MM-DD>`         | Records what was consolidated; also the next run's window anchor.                                                                                                                                                    |
+| `RUN_TIME`     | a low-activity hour, in your local timezone       | e.g. nightly ~03:30.                                                                                                                                                                                                 |
 
 **Boundary:** the routine _reads_ from your source connectors and _writes only_ to the Tars
 brain. If a source isn't authed, skip it and note it in the dream journal — never abort the
@@ -320,6 +320,10 @@ const SOURCES = [
   {
     key: 'team',
     how: '<team workspace: DMs/channels/threads with in-window activity; ref = channel/thread id>',
+  },
+  {
+    key: 'social',
+    how: '<X/Twitter: DM conversations and mention threads with in-window activity; ref = conversation/thread id>',
   },
   {
     key: 'sessions',
