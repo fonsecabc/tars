@@ -95,30 +95,52 @@ export async function rerankCandidates(
 export interface OllamaRerankOptions {
   baseUrl?: string | undefined;
   model?: string | undefined;
+  /** Abort the generate call after this many ms so a slow model can't wedge recall. */
+  timeoutMs?: number | undefined;
 }
+
+/**
+ * Default rerank deadline. Sized to comfortably clear a healthy reranker (a 14b on GPU takes
+ * ~3-4s over a full candidate pool) while still tripping the pathological case — a model
+ * offloaded/thrashing at ~0.2 tok/s — before the MCP client's own request timeout fires and
+ * makes recall look "down". Past this, retrieval order beats a stalled recall.
+ */
+const DEFAULT_RERANK_TIMEOUT_MS = 10000;
 
 /** RerankLlm backed by Ollama's `/api/generate` (JSON mode), running on the Mac GPU. */
 export class OllamaRerankLlm implements RerankLlm {
   readonly model: string;
   private readonly baseUrl: string;
+  private readonly timeoutMs: number;
 
   constructor(options: OllamaRerankOptions = {}) {
     this.baseUrl = (options.baseUrl ?? 'http://localhost:11434').replace(/\/+$/, '');
     this.model = options.model ?? 'qwen2.5:14b-instruct';
+    this.timeoutMs = options.timeoutMs ?? DEFAULT_RERANK_TIMEOUT_MS;
   }
 
   async complete(prompt: string): Promise<string> {
-    const response = await fetch(`${this.baseUrl}/api/generate`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({
-        model: this.model,
-        prompt,
-        stream: false,
-        format: 'json',
-        options: { temperature: 0 },
-      }),
-    });
+    // Bound the call: a slow/overloaded model must fall back to retrieval order (the caller
+    // treats any throw as "keep original order"), never block the whole recall path.
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    let response: Response;
+    try {
+      response = await fetch(`${this.baseUrl}/api/generate`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          model: this.model,
+          prompt,
+          stream: false,
+          format: 'json',
+          options: { temperature: 0 },
+        }),
+        signal: controller.signal,
+      });
+    } finally {
+      clearTimeout(timer);
+    }
     if (!response.ok) {
       const body = await response.text().catch(() => '');
       throw new Error(
