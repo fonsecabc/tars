@@ -4,7 +4,7 @@ SHELL := /bin/bash
 SCRIPTS := scripts
 
 .DEFAULT_GOAL := help
-.PHONY: help setup install-service uninstall-service start stop restart logs doctor tunnel check test
+.PHONY: help setup install-service uninstall-service start stop restart logs doctor tunnel check test install-janitor uninstall-janitor janitor-status
 
 help: ## Show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -18,6 +18,15 @@ install-service: ## Generate + bootstrap the launchd service (always-on)
 
 uninstall-service: ## Stop and remove the launchd service
 	@bash $(SCRIPTS)/service.sh uninstall
+
+install-janitor: ## Install the periodic process-hygiene janitor (every 30 min)
+	@bash $(SCRIPTS)/janitor.sh install
+
+uninstall-janitor: ## Stop and remove the janitor agent
+	@bash $(SCRIPTS)/janitor.sh uninstall
+
+janitor-status: ## Show janitor load state + last run
+	@bash $(SCRIPTS)/janitor.sh status
 
 start: ## Start the always-on server
 	@bash $(SCRIPTS)/service.sh start

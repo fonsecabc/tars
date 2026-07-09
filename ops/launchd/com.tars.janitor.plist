@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Tars janitor: process-hygiene safety net. Runs tars-janitor.sh every 30 min to reap
+     orphaned MCP servers, stuck keepalive loops, and long-idle Claude sessions before they
+     exhaust RAM/swap. StartInterval (not KeepAlive) — it's a periodic sweep, not a daemon.
+     Installed via `make install-janitor`; do not hand-edit the copy in ~/Library/LaunchAgents.
+     ProgramArguments path is filled from the real repo path at install time. -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.tars.janitor</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/ABSOLUTE/PATH/TO/tars/ops/launchd/tars-janitor.sh</string>
+  </array>
+
+  <key>RunAtLoad</key>
+  <true/>
+  <key>StartInterval</key>
+  <integer>1800</integer>
+  <key>ThrottleInterval</key>
+  <integer>60</integer>
+
+  <key>StandardOutPath</key>
+  <string>/tmp/tars-janitor.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/tars-janitor.err.log</string>
+</dict>
+</plist>
