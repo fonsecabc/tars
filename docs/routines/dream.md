@@ -4,7 +4,8 @@ A reusable routine for any Tars instance. Each night Tars _sleeps_: it replays t
 conversations, moves what matters into long-term memory, weaves new facts into the existing
 graph, and renormalizes the brain so signal is strengthened and noise fades. The goal is a
 brain that is a little more accurate and a little better organized every morning than it was
-the night before.
+the night before — and, if `PRIMER_TARGET` is configured, so that tomorrow's first session opens
+with a short note on what's still live, instead of starting cold.
 
 It talks to the brain only through the standard memory tools (`memory_recall`,
 `memory_remember`, `memory_link`, `memory_correct`, `memory_forget`, `memory_timeline`), so it
@@ -63,11 +64,15 @@ exactly as a night of sleep is slow-wave-heavy early and REM-heavy toward mornin
   ballooned during waking are scaled back; weak/redundant connections are pruned while salient
   ones are locally strengthened, restoring signal-to-noise. _Here:_ merging duplicates,
   reconciling contradictions, and weakening trivia while reinforcing what recurs.
+- **Prospective memory → sleep consolidates intentions, not just facts.** Sleep measurably
+  improves "remember to do X" memory for future tasks, distinct from remembering-that. _Here:_
+  the last stage isn't more graph-writing — it's surfacing the handful of live
+  intentions/threads so the next waking session starts primed instead of cold.
 
 Grounding: Klinzing, Niethard & Born (2019), "Mechanisms of systems memory consolidation during
 sleep," _Nature Neuroscience_; Tononi & Cirelli (2014), "Sleep and the price of plasticity" (the
-synaptic homeostasis hypothesis); plus reviews on NREM oscillatory coupling and REM integration
-listed at the end.
+synaptic homeostasis hypothesis); Diekelmann et al. on sleep and prospective memory; plus reviews
+on NREM oscillatory coupling and REM integration listed at the end.
 
 ## Configuration
 
@@ -78,10 +83,12 @@ listed at the end.
 | `WRITE_POLICY` | `auto-apply` or `propose-then-confirm`            | Auto-apply writes directly (every write is audited and reversible); propose emits a report and waits.                                                                                                                |
 | `DREAM_MARKER` | `event` entity named `Dream <YYYY-MM-DD>`         | Records what was consolidated; also the next run's window anchor.                                                                                                                                                    |
 | `RUN_TIME`     | a low-activity hour, in your local timezone       | e.g. nightly ~03:30.                                                                                                                                                                                                 |
+| `PRIMER_TARGET` | your host's persistent instructions file, if it has one (e.g. Claude Code's global `CLAUDE.md`) | Optional. Enables Stage 5 — a short "what's live right now" note written for tomorrow's cold-start session. Leave unset on hosts where instructions live in a UI field, not a file (Desktop custom instructions, claude.ai project instructions) — there's no reliable way to write there, so skip the stage. |
 
 **Boundary:** the routine _reads_ from your source connectors and _writes only_ to the Tars
-brain. If a source isn't authed, skip it and note it in the dream journal — never abort the
-whole dream; it's additive and the missed day will be re-covered next run.
+brain — with one narrow, deliberate exception (Stage 5, `PRIMER_TARGET`). If a source isn't
+authed, skip it and note it in the dream journal — never abort the whole dream; it's additive
+and the missed day will be re-covered next run.
 
 ## Replay window (idempotency)
 
@@ -126,6 +133,7 @@ a **dedup barrier** then merges candidates across conversations; then writes fan
 | Integrate         | **fan-out per entity**       | All entities exist; link / abstract / reconcile each.                  |
 | Renormalize       | single (barrier)             | Merging duplicates and pruning need a cross-entity view.               |
 | Wake              | single                       | Lay the marker + report (needs aggregate counts).                      |
+| Prime             | single                       | Global view (tonight's entities + still-open commitments) to draft one primer. Skips cleanly if `PRIMER_TARGET` is unset/unwritable. |
 
 A runnable script is in _Dream workflow script_ near the end of this file (one `CONFIGURE` block
 — the `SOURCES`). It runs via a host that can orchestrate multi-agent workflows. Where that isn't
@@ -217,6 +225,35 @@ not the whole brain):
    needs a human (an unresolved contradiction, a source that was down). IDs + one-line summaries;
    don't dump the full graph.
 
+### Stage 5 — Leaving a note for tomorrow (prospective priming, optional)
+
+Only runs if `PRIMER_TARGET` is set. Every stage above writes to the brain, which a new session
+only sees if it thinks to `memory_recall` first. But if your host loads a persistent instructions
+file at the start of every session (Claude Code's global `CLAUDE.md`, for instance), that file is
+read before any tool call — before the session even knows what to ask about. Stage 5 puts a
+short, self-overwriting primer there: not new information, just a pointer to what's live right
+now, so tomorrow's session starts oriented instead of discovering context three messages in.
+
+This is the one deliberate exception to "write only to the brain," and it stays narrow because of
+_why_ it exists: the rest of a persistent instructions file is permanent behavioral instruction;
+this block is disposable working-set state, fully regenerated every night, that exists only to
+seed context at the top of a fresh session. The brain remains the sole source of truth.
+
+1. **Gather candidates.** Combine tonight's consolidated entities (freshest signal of what's
+   active) with a `memory_recall`/`memory_timeline` pass for observations tagged `commitment`,
+   `plan`, or `blocked` that are still open (no `validTo`, not superseded) regardless of age, plus
+   anything explicitly stated as a current focus or blocker.
+2. **Draft the primer.** At most **8 one-line bullets** — active threads, near-term deadlines
+   (with dates), unresolved questions, current focus. Every bullet must trace to something
+   actually stored or read tonight; never pad the list to hit a quota. Date-stamp the header.
+3. **Write it, surgically.** Read `PRIMER_TARGET`. If markers `<!-- TARS:TODAY:START -->` /
+   `<!-- TARS:TODAY:END -->` exist, replace _only_ the text between them — full overwrite, never
+   append, so resolved items simply drop off. If the markers don't exist yet, insert the block
+   once, directly under the file's first heading. Touch nothing else in that file.
+4. **Degrade quietly.** If the target file doesn't exist, isn't writable, or the edit fails, skip
+   the stage and note it in the dream journal — never fail or retry-loop the whole dream over a
+   Markdown edit.
+
 ## Worked example — consolidating one episode
 
 The whole routine turns on one judgment, made in Stage 1: _given a fact from the day, is it new,
@@ -256,6 +293,10 @@ signal (the move), and don't re-record what's already there or what's noise.
 - **Preserve history.** Use `memory_correct` to supersede, not deletion, when facts change.
   Reserve `memory_forget` for true duplicates and noise.
 - **Bounded output.** Keep the morning report small; the brain — not the report — is the record.
+- **One narrow exception, tightly scoped.** If `PRIMER_TARGET` is set, Stage 5 writes a short
+  primer there — the only write this routine makes outside the brain. It touches only the text
+  between the `TARS:TODAY` markers, fully overwrites (never appends), caps at 8 bullets, and
+  skips cleanly if the target is missing or unwritable.
 
 ---
 
@@ -274,7 +315,8 @@ once.
    = the read tools for the connectors you replay. WRITE_POLICY = auto-apply (audited, reversible).
 2. Run it via your workflow tool. It orchestrates: Window → Enumerate (fan-out per source) →
    Deep replay (fan-out per conversation) → dedup barrier → Consolidate (fan-out per entity) →
-   Integrate (fan-out per entity) → Renormalize (barrier) → Wake (marker + report).
+   Integrate (fan-out per entity) → Renormalize (barrier) → Wake (marker + report) → Prime
+   (optional: a short "today" note written to `PRIMER_TARGET` for tomorrow's cold-start session).
 3. Relay the final morning report — concise: the most salient new facts, notable new connections,
    anything corrected or pruned, and anything that needs a human.
 
@@ -287,7 +329,9 @@ Standing guardrails (these genuinely override defaults):
   (fallback 36h), never from memory of a prior run; recall before writing so re-running converges.
 - Never invent personal data — unknown stays unknown; every fact traces to a real episode.
 - Privacy is local-only — read from connectors, write only to the local Tars brain, keep all chat
-  content off any external service.
+  content off any external service. `PRIMER_TARGET`, if set, is the one narrow exception — and
+  even there, only the marked block gets touched, never appended to, never anything else in the
+  file.
 - Preserve history — correct/supersede rather than delete when facts change.
 - Keep the report small; the brain is the record, not the report.
 ```
@@ -310,6 +354,7 @@ export const meta = {
     { title: 'Integrate', detail: 'link, abstract, reconcile per entity' },
     { title: 'Renormalize', detail: 'merge duplicates and prune' },
     { title: 'Wake', detail: 'lay the marker + morning report' },
+    { title: 'Prime', detail: 'optional: write a "today" primer for tomorrow\'s session' },
   ],
 };
 
@@ -335,6 +380,10 @@ const SOURCES = [
   },
 ];
 const FALLBACK_HOURS = 36;
+
+// Set this to your host's persistent instructions file to enable Stage 5 (e.g. Claude Code's
+// global CLAUDE.md). Leave it '' on hosts where instructions live in a UI field, not a file.
+const PRIMER_TARGET = '';
 
 const WINDOW = {
   type: 'object',
@@ -523,12 +572,34 @@ const cleanup = await agent(
 
 // Wake — lay the marker (needs aggregate counts) + morning report.
 phase('Wake');
-return await agent(
+const wake = await agent(
   `Lay tonight's Dream marker, then write the morning report. ` +
     `memory_remember an event entity named "Dream <today's date>" with observations recording: window covered = ${win.from} → ${win.to} (state "covered through ${win.to}" explicitly so the next run resumes there), which SOURCES returned data vs were skipped, and counts — entities consolidated: ${consolidated.length}; cleanup: ${JSON.stringify(cleanup)}. Tag it "dream". ` +
     `Then a concise morning report: the most salient new facts, notable new connections, anything corrected or pruned, and anything that needs a human. IDs + one-line summaries; don't dump the graph.`,
   { label: 'wake', phase: 'Wake' },
 );
+
+// Prime (optional) — leave a short "what's live right now" note for tomorrow's cold-start
+// session. A new session reads PRIMER_TARGET before it ever thinks to memory_recall, so this is
+// the one deliberate write outside the brain: disposable, fully regenerated, never appended to.
+let primed = { summary: 'skipped — PRIMER_TARGET not configured' };
+if (PRIMER_TARGET) {
+  phase('Prime');
+  primed = await agent(
+    `Draft and install tomorrow's working-context primer. This is NOT more memory-writing — it's surfacing a handful of already-known, still-open threads into ${PRIMER_TARGET} so a brand-new session starts oriented instead of cold. ` +
+      `1) Gather candidates: entities consolidated tonight (${work.map((w) => w.entity).join(', ') || '(none)'}), PLUS a memory_recall/memory_timeline pass for observations tagged commitment/plan/blocked that are still open (no validTo, not superseded) regardless of age, PLUS anything explicitly stated as a current focus/blocker. ` +
+      `2) Draft AT MOST 8 one-line bullets — active threads/projects, near-term deadlines (with dates), unresolved questions or blockers, current focus. Every bullet must trace to something actually stored or read — never pad the list; fewer honest bullets beats eight invented ones. ` +
+      `3) Read ${PRIMER_TARGET}. If markers "<!-- TARS:TODAY:START -->" / "<!-- TARS:TODAY:END -->" exist, replace ONLY the text between them (full overwrite, never append, so resolved items drop off). If they don't exist, insert the block once, directly under the file's first heading: a "## Working context" section headed "As of <today's date>:" followed by the bullets, wrapped in those two markers, with a one-line note that this is a fast primer regenerated nightly and the brain remains ground truth. Touch NOTHING else in that file. ` +
+      `4) If the file doesn't exist, isn't writable, or the edit fails, skip cleanly and say so — do not retry-loop or fail the run over this. Return a one-line summary of what you wrote or why you skipped.`,
+    {
+      schema: { type: 'object', properties: { summary: { type: 'string' } }, required: ['summary'] },
+      label: 'prime',
+      phase: 'Prime',
+    },
+  );
+}
+
+return { wake, primed };
 ```
 
 ## Sources (memory neuroscience grounding)
