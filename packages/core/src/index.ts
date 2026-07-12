@@ -25,6 +25,22 @@ export {
 } from './db/index.js';
 export * as store from './store/index.js';
 export * as sessions from './sessions/index.js';
+// Top-level session surface (symmetric with Memory): the bound service + transport-facing
+// types. The lower store/ops layers stay under the `sessions` namespace.
+export { createSessionService, type SessionService } from './sessions/service.js';
+export type {
+  Session,
+  SessionEvent,
+  SessionLease,
+  SessionStatus,
+  SessionTier,
+  EventKind,
+  Harness,
+  AppendEventInput,
+  OpenSessionInput,
+  ListSessionsOptions,
+  ListEventsOptions,
+} from './sessions/types.js';
 export * as retrieval from './retrieval/index.js';
 export * as embeddings from './embeddings/index.js';
 export * as mirror from './mirror/index.js';

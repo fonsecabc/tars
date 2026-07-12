@@ -5,6 +5,7 @@ import {
   backfillEmbeddings,
   createMemory,
   createPool,
+  createSessionService,
   databaseUrlFromEnv,
   embeddingProviderFromEnv,
   rerankLlmFromEnv,
@@ -42,12 +43,17 @@ async function main(): Promise<void> {
   // serving path; it adds an LLM call per recall, so it stays opt-in for the Claude Code path.
   const reranker = rerankLlmFromEnv();
   const memory = createMemory(pool, { embeddings: provider, reranker });
+  const sessions = createSessionService(pool);
 
   // 1. Loopback listener — trusted, NO OAuth. For Claude Code on this Mac. Hard-bound to
   //    127.0.0.1 so it is unreachable from the network; the tunnel never points here.
   //    allowedHosts adds DNS-rebinding protection so a browser page can't reach it either.
+  // The Chronicle session routes ride ONLY the trusted loopback listener — never the public
+  // OAuth one (below). Raw transcripts are more sensitive than the distilled graph and there
+  // are no per-tier session ACLs yet, so session history stays local, off the tunnel.
   const loopbackApp = createApp({
     memory,
+    sessions,
     allowedHosts: [`127.0.0.1:${loopbackPort}`, `localhost:${loopbackPort}`],
   });
   const loopbackServer = loopbackApp.listen(loopbackPort, LOOPBACK_HOST, () => {
