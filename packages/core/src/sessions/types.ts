@@ -14,6 +14,10 @@
 import type { Queryable } from '../db/pool.js';
 import type { Uuid } from '../schema/common.js';
 
+// Re-exported so the contract is self-contained: every Chronicle consumer can import the
+// primitives it needs from this one module rather than reaching into ../schema.
+export type { Uuid } from '../schema/common.js';
+
 // --- Harnesses --------------------------------------------------------------
 
 /**

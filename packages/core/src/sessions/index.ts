@@ -5,4 +5,6 @@
  * store namespace; later batches add the ops namespace + graph projector exports here.
  */
 export * from './types.js';
+export * from './errors.js';
 export * as store from './store/index.js';
+export * as ops from './ops/index.js';
