@@ -24,6 +24,7 @@ export {
   type Queryable,
 } from './db/index.js';
 export * as store from './store/index.js';
+export * as sessions from './sessions/index.js';
 export * as retrieval from './retrieval/index.js';
 export * as embeddings from './embeddings/index.js';
 export * as mirror from './mirror/index.js';

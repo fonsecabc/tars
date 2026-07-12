@@ -36,6 +36,8 @@ backups/
 *.sql
 *.sql.gz
 *.dump
+# …but migrations are source code, not data — never brain dumps.
+!packages/*/migrations/*.sql
 
 # OS / editor
 .DS_Store
