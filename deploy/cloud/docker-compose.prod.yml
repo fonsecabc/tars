@@ -1,0 +1,113 @@
+name: tars-prod
+
+# Production stack for the always-on cloud box. Uses a DISTINCT project + volume names
+# from the dev stack (deploy/docker/docker-compose.yml) so it can never attach to your
+# dev data volume by accident. Intended to run on a DEDICATED host — do not run it on the
+# same machine as the dev stack (the shared container_names would fight).
+#
+# Three services on a private bridge
+# network; only the OAuth listener is reachable from the host, and only on loopback
+# (Tailscale Serve fronts it — nothing is published to the public internet).
+#
+#   postgres  pgvector; NO host port. Reachable only by `tars` on the `backend` network.
+#   ollama    local embeddings (nomic-embed-text). NO host port. CPU-only is fine on 4GB.
+#   tars      the MCP server. Publishes ONLY 127.0.0.1:${PUBLIC_PORT} on the host.
+#
+# Network segmentation: postgres (the brain) lives on an `internal` network with no route
+# off the box and is NOT reachable from ollama; ollama lives on a separate network. Only
+# `tars` bridges both. So a compromised ollama (bad model / dependency) cannot reach the
+# database, and postgres can never exfiltrate to the internet.
+#
+# Bring up:  docker compose -f deploy/cloud/docker-compose.prod.yml --env-file /etc/tars/tars.env up -d --build
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: tars-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-tars}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in the env file}
+      POSTGRES_DB: ${POSTGRES_DB:-tars}
+    # No `ports:` — the DB is never reachable from the host or the network, only from
+    # other containers on the tars network. This is deliberate; do not add a mapping.
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # `backend` is an internal network (no route off the box) shared only with `tars`.
+    networks: [backend]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-tars} -d ${POSTGRES_DB:-tars}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # Postgres holds the entire brain — keep it locked to the loopback-only stack.
+    security_opt: ['no-new-privileges:true']
+
+  ollama:
+    # Pin the tag (never `latest`): `latest` silently pulls whatever upstream ships next,
+    # so a compromised/rebuilt upstream image would land on the box at the next restart.
+    # Bump this deliberately after reviewing the release.
+    image: ollama/ollama:0.30.10
+    container_name: tars-ollama
+    restart: always
+    # No host port; only `tars` talks to it. On `frontend` so it can never reach postgres.
+    volumes:
+      - ollama:/root/.ollama
+    networks: [frontend]
+    security_opt: ['no-new-privileges:true']
+
+  tars:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    image: tars-server:local
+    container_name: tars-server
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-tars}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-tars}
+      # Embeddings: local Ollama in-cluster (nothing leaves the box).
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-ollama}
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_EMBEDDING_MODEL: ${OLLAMA_EMBEDDING_MODEL:-nomic-embed-text}
+      TARS_BACKFILL_ON_BOOT: ${TARS_BACKFILL_ON_BOOT:-0}
+      # Public OAuth listener. Bind 0.0.0.0 INSIDE the container so the published port
+      # works; the publish below pins it to the host's loopback, and Tailscale Serve is
+      # the only thing that fronts it. The no-auth loopback listener (8787) is hard-bound
+      # to 127.0.0.1 inside the container by the server and is never published.
+      PUBLIC_HOST: 0.0.0.0
+      PUBLIC_PORT: ${PUBLIC_PORT:-8788}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:?set PUBLIC_BASE_URL to your https://<host>.<tailnet>.ts.net}
+      TARS_PUBLIC_AUTH_ACK: '1'
+    ports:
+      # HOST loopback only. Never change the left side to 0.0.0.0 — that would expose the
+      # auto-approving OAuth brain to the whole internet. Tailscale Serve reaches this.
+      # (cloud-init also installs a DOCKER-USER guard so a stray 0.0.0.0 publish still can't
+      # be reached from the public NIC — defence in depth for exactly this mistake.)
+      - '127.0.0.1:${PUBLIC_PORT:-8788}:${PUBLIC_PORT:-8788}'
+    # Bridges both networks: talks to postgres on `backend`, ollama on `frontend`.
+    networks: [backend, frontend]
+    # This is the only container reachable (via loopback) from the tailnet. Lock it down:
+    # drop all Linux capabilities (a Node listener needs none) and run a read-only rootfs
+    # (the prod server writes nothing to disk — it only talks to postgres/ollama).
+    security_opt: ['no-new-privileges:true']
+    cap_drop: [ALL]
+    read_only: true
+    tmpfs:
+      - /tmp
+
+networks:
+  # No route off the box; shared only by postgres + tars. Blocks ollama->postgres and any
+  # outbound exfil from a compromised postgres.
+  backend:
+    driver: bridge
+    internal: true
+  # Has egress (ollama pulls models from the internet); shared by ollama + tars.
+  frontend:
+    driver: bridge
+
+volumes:
+  pgdata:
+  ollama:

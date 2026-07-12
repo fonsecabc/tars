@@ -1,0 +1,26 @@
+[Unit]
+Description=Tars brain backup (pg_dump | restic -> Backblaze B2)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+# __REPO__ is rewritten to the real repo path by bootstrap.sh.
+ExecStart=/usr/bin/env bash __REPO__/deploy/cloud/backup/restic-backup.sh
+# Hardening: the unit only needs docker + the backup env; keep it boxed in.
+Nice=10
+IOSchedulingClass=idle
+ProtectSystem=strict
+ReadWritePaths=/var/lib/docker /tmp
+# restic needs a writable, PERSISTENT cache (reused across runs to avoid re-downloading the
+# repo index from B2 every hour). CacheDirectory creates/owns /var/cache/restic under the
+# read-only rootfs; point restic at it.
+CacheDirectory=restic
+Environment=RESTIC_CACHE_DIR=/var/cache/restic
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- TARS's ears: always-on mic. Runs whisper-stream in VAD mode, gates each utterance
+     (master switch ~/.tars/ears.on, self-hearing, wake word, junk) and forwards what's
+     meant for TARS to the router (the gem). This is the ONLY component with a standing
+     local cost — whisper-stream holds the mic and uses CPU/Metal continuously. If the
+     machine struggles, `launchctl bootout gui/$(id -u)/com.tars.ears` stops just this;
+     the router/inject/speak path keeps working. Model is swappable via TARS_WHISPER_MODEL
+     (small.en default; drop to base.en/tiny.en to cut load). Needs Microphone (TCC). -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.tars.ears</string>
+
+    <!-- Launch the signed app bundle's executable, NOT node directly: macOS attributes the
+         mic (TCC) grant to this bundle, and the node + whisper-stream it spawns inherit it.
+         Rebuild the bundle with ops/launchd/tars-ears-app/build.sh. -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/you/Applications/TarsEars.app/Contents/MacOS/TarsEars</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/you/Projects/personal /tars/voice</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>ROUTER_URL</key>
+        <string>http://127.0.0.1:8793/hear</string>
+        <!-- Multilingual large-v3-turbo (q5): far better on Caio's accented English than the
+             English-only small.en, and handles Portuguese too. Fast on the M5 Pro's Metal.
+             Set TARS_WHISPER_LANG=auto (or pt) in this dict if he speaks Portuguese to TARS. -->
+        <key>TARS_WHISPER_MODEL</key>
+        <string>/Users/you/.tars/models/ggml-large-v3-turbo-q5_0.bin</string>
+        <!-- Pin the real built-in mic. Index shifts if the device list changes (e.g. the
+             old virtual "Caio Fonseca Microphone" loopback device disappeared, so the real
+             "MacBook Pro Microphone" moved from index 1 to index 0) — if the mic ever goes
+             silent again, check `whisper-stream` stderr for "Capture device #N" and re-pin. -->
+        <key>TARS_CAPTURE_ID</key>
+        <string>0</string>
+        <key>TARS_WHISPER_THREADS</key>
+        <string>6</string>
+        <key>TARS_VAD_THOLD</key>
+        <string>0.35</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/you/Library/Logs/tars-ears.out.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/you/Library/Logs/tars-ears.err.log</string>
+</dict>
+</plist>

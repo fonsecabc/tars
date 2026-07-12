@@ -1,8 +1,14 @@
 #!/usr/bin/env node
-// tars-speak-hook — Claude Code `Stop` hook. Fires when the main agent finishes a
-// turn. Reads the session transcript, extracts the final user-facing assistant
-// text, and hands it to tars-speak to say aloud. Fire-and-forget: it returns fast
-// so Claude never waits on speech.
+// tars-speak-hook — Claude Code `Stop` hook. Fires when ANY of Caio's Claude Code
+// sessions finishes a turn. Reads the transcript, extracts the final user-facing
+// assistant text, and hands it to the ROUTER's /notify — the same Sonnet session
+// that has session-awareness, focus, and conversation history — not straight to
+// tars-speak's dumb speakify (gemma2:9b via Ollama), which had no idea what TARS
+// had just been asked and couldn't take a follow-up question about it. Routing
+// through /notify means Caio can say "tell me more about that" right after and
+// the gem resolves "that" from history, same as anything else he says to TARS.
+// Fire-and-forget: the router ACKs immediately and narrates in the background, so
+// this never blocks Claude waiting on a live model call.
 //
 // Gating (so it stays silent until you opt in, and can be hushed instantly):
 //   - speaks ONLY if ~/.tars/voice.on exists
@@ -12,7 +18,7 @@ import { readFileSync, existsSync, statSync, openSync, readSync, closeSync } fro
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
-const SPEAK_URL = process.env.SPEAK_URL || 'http://127.0.0.1:8790/speak'
+const NOTIFY_URL = process.env.NOTIFY_URL || 'http://127.0.0.1:8793/notify'
 const TARS_DIR = join(homedir(), '.tars')
 const ON_FLAG = join(TARS_DIR, 'voice.on')
 const MUTED_FLAG = join(TARS_DIR, 'voice.muted')
@@ -38,6 +44,17 @@ function readTail(path, maxBytes = 262144) {
     readSync(fd, b, 0, len, start)
     return b.toString('utf8')
   } finally { closeSync(fd) }
+}
+
+// A short, speech-friendly name for which project/session this reply belongs to, so
+// tars-speak can remind Caio what it's talking about. From cwd: drop the worktree
+// path, take the repo folder, and turn dashes/underscores into spaces.
+//   /Users/.../Projects/taste/component-annotation/.claude/worktrees/x -> "component annotation"
+function topicFromCwd(cwd) {
+  if (!cwd) return ''
+  const base = String(cwd).split('/.claude/worktrees/')[0]
+  const repo = base.split('/').filter(Boolean).pop() || ''
+  return repo.replace(/[-_]+/g, ' ').trim()
 }
 
 // Final user-facing text = the last non-sidechain assistant line that carries text
@@ -72,14 +89,15 @@ async function main() {
   if (!path || !existsSync(path)) return
   const text = extractFinalAssistantText(path)
   if (!text) return
+  const topic = topicFromCwd(data.cwd)
   try {
-    await fetch(SPEAK_URL, {
+    await fetch(NOTIFY_URL, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ text, priority: 'interactive', source: 'claude-code', session_id: data.session_id }),
-      signal: AbortSignal.timeout(600),
+      body: JSON.stringify({ text, topic, cwd: data.cwd, source: 'claude-code', session_id: data.session_id }),
+      signal: AbortSignal.timeout(2500),   // router ACKs fast and narrates async — this just confirms it got the handoff
     })
-  } catch { /* fire-and-forget: tars-speak may be down; never block Claude */ }
+  } catch { /* fire-and-forget: router may be down; never block Claude */ }
 }
 
 main().then(() => process.exit(0)).catch(() => process.exit(0))

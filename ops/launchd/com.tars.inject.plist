@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- TARS's hands: loopback :8792 that pastes text into the frontmost Claude Desktop
+     window via the clipboard + System Events (Cmd+V, Return). Idle HTTP until called;
+     negligible cost. Needs Accessibility permission for the shell it runs under. -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.tars.inject</string>
+
+    <!-- Launch the signed app bundle's executable, NOT node directly: sending keystrokes
+         (System Events) needs an Accessibility grant, which macOS attributes to this
+         bundle. The node it spawns inherits it. Grant TarsHands.app in System Settings ›
+         Privacy & Security › Accessibility. Rebuild via ops/launchd/tars-ears-app/build.sh. -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/you/Applications/TarsHands.app/Contents/MacOS/TarsHands</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/you/Projects/personal /tars/voice</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>INJECT_PORT</key>
+        <string>8792</string>
+        <key>TARS_TARGET_APP</key>
+        <string>Claude</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/you/Library/Logs/tars-inject.out.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/you/Library/Logs/tars-inject.err.log</string>
+</dict>
+</plist>

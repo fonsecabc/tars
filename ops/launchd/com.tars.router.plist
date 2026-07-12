@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- TARS's gem: the local-model front on loopback :8793. Everything the ears hear hits
+     this first. It answers small talk / session questions itself (from the live session
+     snapshot) and only hands real work to the live Claude session via tars-inject.
+     Backend is Claude Sonnet via OpenRouter (no local RAM cost); set TARS_GEM_BACKEND=ollama
+     to fall back to a local model. Cheap when idle — a curl per utterance, nothing resident. -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.tars.router</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/node</string>
+        <string>/Users/you/Projects/personal /tars/voice/tars-router.mjs</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/you/Projects/personal /tars/voice</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>ROUTER_PORT</key>
+        <string>8793</string>
+        <key>SPEAK_URL</key>
+        <string>http://127.0.0.1:8790/speak</string>
+        <key>INJECT_URL</key>
+        <string>http://127.0.0.1:8792/inject</string>
+        <!-- OpenRouter (Anthropic-compatible) via curl — undici wedges on this host's dead
+             IPv6 route to external hosts, so the gem shells out like the WhatsApp responder. -->
+        <key>OPENROUTER_API_KEY</key>
+        <string>YOUR_OPENROUTER_API_KEY</string>
+        <!-- Haiku, not Sonnet: the gem only routes + answers from the session list, which
+             Haiku does in ~1-2s vs Sonnet's ~8s. Speed matters more than depth for a voice
+             front; the heavy thinking happens in the live Claude session, not here. -->
+        <key>TARS_GEM_SLUG</key>
+        <string>anthropic/claude-sonnet-4.6</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/you/Library/Logs/tars-router.out.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/you/Library/Logs/tars-router.err.log</string>
+</dict>
+</plist>

@@ -1,0 +1,40 @@
+# Keep the build context small and secrets out of the image.
+# NOTE: do NOT ignore packages/*/migrations/*.sql — they ship in the image and run on boot.
+.git
+node_modules
+**/node_modules
+**/dist
+**/*.tsbuildinfo
+coverage
+**/coverage
+
+# Secrets & local env — never bake into an image. Match env files ANYWHERE in the tree
+# (e.g. a stray deploy/cloud/tars.env or backup.env with real secrets), not just the root.
+.env
+.env.*
+**/*.env
+**/*.env.*
+!**/*.env.example
+*.secret
+*.pem
+*.key
+*.cert
+credentials.json
+token.json
+.mcp.json
+
+# Personal data — the brain must never enter an image layer.
+backups/
+*-backups/
+*-mirror/
+data/
+*.sql.gz
+*.dump
+
+# Noise
+.DS_Store
+.github
+docs
+*.log
+logs
+packages/core/src/eval/results

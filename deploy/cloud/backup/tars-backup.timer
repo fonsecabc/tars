@@ -1,0 +1,11 @@
+[Unit]
+Description=Run the Tars brain backup hourly
+
+[Timer]
+# Hourly, a few minutes past the hour, catching up if the box was asleep.
+OnCalendar=*-*-* *:07:00
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

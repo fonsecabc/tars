@@ -22,13 +22,54 @@ const VOICE = process.env.TARS_VOICE_NAME || ''   // '' => system default voice
 const RATE = process.env.TARS_VOICE_RATE || ''    // '' => default rate; else wpm
 const QUEUE_MAX = Number(process.env.SPEAK_QUEUE_MAX || 20)
 const DEDUPE_MS = Number(process.env.SPEAK_DEDUPE_MS || 10 * 60 * 1000)
+// Remind Caio which session is talking. With many parallel sessions all speaking
+// through one voice, a bare reply leaves him guessing. So we lead with the topic
+// ("On tars: …") whenever it CHANGES from the last thing spoken, or after a pause
+// long enough that the context has faded. TARS_TOPIC_ALWAYS=1 prepends it every time;
+// TARS_TOPIC=0 disables it entirely.
+const TOPIC_MODE = process.env.TARS_TOPIC === '0' ? 'off' : (process.env.TARS_TOPIC_ALWAYS === '1' ? 'always' : 'change')
+const TOPIC_STALE_MS = Number(process.env.TARS_TOPIC_STALE_MS || 3 * 60 * 1000)
+let lastTopic = ''
+let lastTopicAt = 0
+function withTopic(speech, topic) {
+  if (TOPIC_MODE === 'off' || !topic) return speech
+  const now = Date.now()
+  const changed = topic !== lastTopic
+  const stale = now - lastTopicAt > TOPIC_STALE_MS
+  const announce = TOPIC_MODE === 'always' || changed || stale
+  lastTopic = topic
+  lastTopicAt = now
+  return announce ? `On ${topic}: ${speech}` : speech
+}
 
 const TARS_DIR = join(homedir(), '.tars')
 const MUTED_FLAG = join(TARS_DIR, 'voice.muted')
+const SPEAKING_FLAG = join(TARS_DIR, 'speaking')   // present while audio is on the speakers
 try { mkdirSync(TARS_DIR, { recursive: true }) } catch { /* ignore */ }
 
 const log = (...a) => console.log(new Date().toISOString(), ...a)
 const isMuted = () => existsSync(MUTED_FLAG)
+
+// The ears daemon watches this flag and drops anything the mic hears while it's set,
+// so TARS never transcribes his own voice off the speakers. Set for the whole speaking
+// burst, cleared when the queue drains.
+// whisper (the ears) only emits the transcript of TARS's speech ~1-2s AFTER the audio
+// stops — its VAD waits for a pause first. If we clear the flag the instant playback ends,
+// that trailing transcript arrives with the gate already open and TARS hears himself. So
+// hold the flag for a cooldown after speaking; a new utterance cancels the pending clear.
+const SELF_HEAR_COOLDOWN_MS = Number(process.env.TARS_SPEAK_COOLDOWN_MS || 2500)
+let clearTimer = null
+function setSpeaking(on) {
+  try {
+    if (on) {
+      if (clearTimer) { clearTimeout(clearTimer); clearTimer = null }
+      writeFileSync(SPEAKING_FLAG, String(Date.now()))
+    } else {
+      if (clearTimer) clearTimeout(clearTimer)
+      clearTimer = setTimeout(() => { try { rmSync(SPEAKING_FLAG, { force: true }) } catch { /* ignore */ } clearTimer = null }, SELF_HEAR_COOLDOWN_MS)
+    }
+  } catch { /* ignore */ }
+}
 
 // Phonetic respelling for names Kokoro's English G2P would otherwise mispronounce.
 // Applied ONLY to what's actually sent to the speech backend — never to logs, the
@@ -45,7 +86,7 @@ function makeSayBackend() {
   let child = null
   return {
     name: 'say',
-    speak(text) {
+    speak(text, _opts) {
       return new Promise((resolve) => {
         const args = []
         if (VOICE) args.push('-v', VOICE)
@@ -59,14 +100,20 @@ function makeSayBackend() {
         child.stdin.end(text)
       })
     },
+    async render() { return { cached: false, error: 'no-cache-on-say' } },   // caching is kokoro-only
     stop() { if (child) { try { child.kill('SIGKILL') } catch { /* ignore */ } child = null } },
   }
 }
 // Kokoro (local neural TTS) via the warm sidecar; falls back to `say` on any failure.
+// Fixed phrases (the first-response fillers) are baked to WAV once under CACHE_DIR and then
+// just afplay'd — no synth, no model, near-zero latency. Keyed by voice+exact-text hash.
 let seq = 0
+const CACHE_DIR = join(homedir(), '.tars', 'cache', 'tts')
+try { mkdirSync(CACHE_DIR, { recursive: true }) } catch { /* ignore */ }
 function makeKokoroBackend() {
   const url = process.env.KOKORO_URL || 'http://127.0.0.1:8791/say'
   const sayArgs = () => { const a = []; if (VOICE) a.push('-v', VOICE); if (RATE) a.push('-r', String(RATE)); return a }
+  const cachePath = (text) => join(CACHE_DIR, createHash('sha1').update(`${VOICE || 'kokoro'}|${text}`).digest('hex') + '.wav')
   let child = null
   const playSay = (text) => new Promise((resolve) => {
     try { child = spawn('/usr/bin/say', sayArgs(), { stdio: ['pipe', 'ignore', 'ignore'] }) } catch { resolve(); return }
@@ -80,22 +127,36 @@ function makeKokoroBackend() {
     child.on('error', () => { child = null; resolve() })
     child.on('close', () => { child = null; resolve() })
   })
+  const synth = async (text) => {
+    try {
+      const res = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text }), signal: AbortSignal.timeout(30000) })
+      if (res.ok) return Buffer.from(await res.arrayBuffer())
+      log('kokoro http', res.status)
+    } catch (e) { log('kokoro synth failed:', e.message) }
+    return null
+  }
   return {
     name: 'kokoro',
-    async speak(text) {
-      let wav = null
-      try {
-        const res = await fetch(url, {
-          method: 'POST', headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ text }), signal: AbortSignal.timeout(30000),
-        })
-        if (res.ok) wav = Buffer.from(await res.arrayBuffer())
-        else log('kokoro http', res.status)
-      } catch (e) { log('kokoro synth failed:', e.message) }
+    async speak(text, { cache = false } = {}) {
+      const cp = cachePath(text)
+      if (cache && existsSync(cp)) return playFile(cp)          // pre-rendered → instant, no synth
+      const wav = await synth(text)
       if (!wav || wav.length < 64) return playSay(text)         // graceful fallback
+      if (cache) {                                              // persist for next time, play from cache
+        try { writeFileSync(cp, wav); return await playFile(cp) } catch { /* fall through to tmp */ }
+      }
       const tmp = join(tmpdir(), `tars-speak-${process.pid}-${seq++}.wav`)
       try { writeFileSync(tmp, wav) } catch { return playSay(text) }
       try { await playFile(tmp) } finally { try { rmSync(tmp, { force: true }) } catch { /* ignore */ } }
+    },
+    // Bake a phrase into the cache without playing it — used to pre-warm the fillers.
+    async render(text) {
+      const cp = cachePath(text)
+      if (existsSync(cp)) return { cached: true, already: true }
+      const wav = await synth(text)
+      if (!wav || wav.length < 64) return { cached: false, error: 'synth-failed' }
+      try { writeFileSync(cp, wav); return { cached: true, rendered: true } }
+      catch (e) { return { cached: false, error: String(e.message || e) } }
     },
     stop() { if (child) { try { child.kill('SIGKILL') } catch { /* ignore */ } child = null } },
   }
@@ -132,14 +193,14 @@ let playing = null       // { priority } while an utterance is on the speakers
 let pumping = false
 
 function dequeue() {
-  if (queues.interactive.length) return { text: queues.interactive.shift(), priority: 'interactive' }
-  if (queues.ambient.length) return { text: queues.ambient.shift(), priority: 'ambient' }
+  if (queues.interactive.length) return { ...queues.interactive.shift(), priority: 'interactive' }
+  if (queues.ambient.length) return { ...queues.ambient.shift(), priority: 'ambient' }
   return null
 }
 
-function enqueue(text, priority) {
+function enqueue(text, priority, cache = false) {
   const q = queues[priority]
-  q.push(text)
+  q.push({ text, cache })
   while (q.length > QUEUE_MAX) q.shift()             // bound; drop oldest
   // interactive preempts a playing ambient utterance
   if (priority === 'interactive' && playing && playing.priority === 'ambient') backend.stop()
@@ -165,13 +226,15 @@ async function pump() {
         }
       }
       playing = { priority: item.priority }
-      log(`speak [${item.priority}] ${JSON.stringify(item.text).slice(0, 120)}`)
-      await backend.speak(toSpeechText(item.text))
+      setSpeaking(true)
+      log(`speak [${item.priority}]${item.cache ? ' (cache)' : ''} ${JSON.stringify(item.text).slice(0, 120)}`)
+      await backend.speak(toSpeechText(item.text), { cache: item.cache })
       playing = null
     }
   } finally {
     playing = null
     pumping = false
+    setSpeaking(false)
     if (duckedMusic) { mediaResume(); log('music: resumed') }
   }
 }
@@ -214,9 +277,13 @@ const server = http.createServer(async (req, res) => {
     let speech = body.raw ? String(text).trim() : await speakify(String(text))
     if (!speech) return json(res, 200, { dropped: 'skip' })
     speech = applyLexicon(speech)   // pronunciation fixes, applied last so they survive speakify
-    if (isDupe(speech)) return json(res, 200, { dropped: 'dupe' })
-    enqueue(speech, priority)
-    return json(res, 200, { queued: true, priority, text: speech })
+    speech = withTopic(speech, body.topic)   // lead with which session is talking, so Caio isn't lost
+    // render mode: bake this phrase into the WAV cache and return, without playing (pre-warm).
+    if (body.render) { const r = await backend.render(toSpeechText(speech)); return json(res, 200, { rendered: true, ...r, text: speech }) }
+    // Cached fillers are meant to repeat, so they bypass the say-it-once dedupe.
+    if (!body.cache && isDupe(speech)) return json(res, 200, { dropped: 'dupe' })
+    enqueue(speech, priority, body.cache === true)
+    return json(res, 200, { queued: true, priority, cache: body.cache === true, text: speech })
   }
   if (req.method === 'POST' && req.url === '/stop') {
     const body = (await readBody(req)) || {}
@@ -248,6 +315,7 @@ const server = http.createServer(async (req, res) => {
   json(res, 404, { error: 'not found' })
 })
 
+setSpeaking(false)   // clear any stale flag left by a crash mid-utterance
 server.listen(PORT, '127.0.0.1', () => {
   const fallbackNote = TTS_BACKEND === 'say' ? '' : ` · say-fallback-voice=${VOICE || 'system default'}`
   log(`tars-speak on :${PORT} · backend=${backend.name}${fallbackNote} · muted=${isMuted()}`)

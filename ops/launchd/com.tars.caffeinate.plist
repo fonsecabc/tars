@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Keep the Mac awake 24/7 so the Tars stack never sleeps. Runs `caffeinate` as a
+     long-lived process: -i no idle sleep, -m no disk idle sleep, -s no system sleep
+     (on AC power). Display sleep is intentionally NOT asserted, so the screen can
+     still rest. KeepAlive relaunches it if it ever dies. See ops/launchd/README.md. -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.tars.caffeinate</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/caffeinate</string>
+    <string>-i</string>
+    <string>-m</string>
+    <string>-s</string>
+  </array>
+
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ThrottleInterval</key>
+  <integer>10</integer>
+
+  <key>StandardOutPath</key>
+  <string>/tmp/tars-caffeinate.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/tars-caffeinate.err.log</string>
+</dict>
+</plist>

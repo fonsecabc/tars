@@ -1,0 +1,135 @@
+#cloud-config
+# Hetzner "user data" for the Tars box. Paste this into the Cloud Console "Cloud config"
+# field when creating the server (Ubuntu 24.04). It hardens the host on first boot BEFORE
+# anything is exposed. Replace the two placeholders:
+#   1. ssh_authorized_keys  -> your PUBLIC key (cat ~/.ssh/id_ed25519_personal.pub)
+#   2. (optional) hostname
+#
+# After it boots you SSH in as `tars` and run deploy/cloud/bootstrap.sh.
+
+hostname: tars
+preserve_hostname: false
+
+users:
+  - name: tars
+    groups: [sudo]
+    shell: /bin/bash
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAA__REPLACE_WITH_YOUR_PUBLIC_KEY__ you@example.com
+
+# Lock SSH down: key-only, no root login, no passwords.
+ssh_pwauth: false
+disable_root: true
+
+package_update: true
+package_upgrade: true
+packages:
+  - ufw
+  - fail2ban
+  - unattended-upgrades
+  - ca-certificates
+  - curl
+  - gnupg
+  - git
+  - restic
+  - jq
+
+write_files:
+  # Automatic security updates, including auto-reboot in a quiet window.
+  - path: /etc/apt/apt.conf.d/51tars-unattended
+    content: |
+      Unattended-Upgrade::Automatic-Reboot "true";
+      Unattended-Upgrade::Automatic-Reboot-Time "04:30";
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+  # Kernel / network hardening.
+  - path: /etc/sysctl.d/99-tars-hardening.conf
+    content: |
+      net.ipv4.conf.all.rp_filter = 1
+      net.ipv4.conf.all.accept_redirects = 0
+      net.ipv6.conf.all.accept_redirects = 0
+      net.ipv4.conf.all.send_redirects = 0
+      net.ipv4.conf.all.accept_source_route = 0
+      net.ipv6.conf.all.accept_source_route = 0
+      net.ipv4.tcp_syncookies = 1
+      kernel.kptr_restrict = 2
+      kernel.dmesg_restrict = 1
+  # Harden the SSH daemon beyond the cloud-init defaults.
+  - path: /etc/ssh/sshd_config.d/99-tars.conf
+    content: |
+      PermitRootLogin no
+      PasswordAuthentication no
+      KbdInteractiveAuthentication no
+      ChallengeResponseAuthentication no
+      MaxAuthTries 3
+      X11Forwarding no
+      AllowUsers tars
+  # fail2ban: ban brute-force SSH.
+  - path: /etc/fail2ban/jail.d/tars.conf
+    content: |
+      [sshd]
+      enabled = true
+      maxretry = 4
+      bantime = 1h
+      findtime = 10m
+  # Defence in depth against the classic "Docker bypasses ufw" problem: dockerd inserts its
+  # DNAT/forward rules ahead of ufw, so a published container port can be reachable from the
+  # internet even though ufw denies incoming. The prod stack only publishes on 127.0.0.1, but
+  # this guard makes "no external inbound to containers" hold even if a port is ever published
+  # to 0.0.0.0 by mistake. Only NEW/INVALID inbound on the public NIC into the Docker forward
+  # path is dropped; loopback (Tailscale Serve -> 127.0.0.1), tailscale0, and established
+  # return traffic are untouched.
+  - path: /usr/local/sbin/tars-docker-firewall.sh
+    permissions: '0755'
+    content: |
+      #!/usr/bin/env bash
+      set -eu
+      PUBIF="$(ip route show default 2>/dev/null | awk '{print $5; exit}')"
+      [ -n "${PUBIF:-}" ] || exit 0
+      for ipt in iptables ip6tables; do
+        command -v "$ipt" >/dev/null 2>&1 || continue
+        # DOCKER-USER only exists once dockerd has built its chains.
+        "$ipt" -n -L DOCKER-USER >/dev/null 2>&1 || continue
+        "$ipt" -C DOCKER-USER -i "$PUBIF" -m conntrack --ctstate NEW,INVALID -j DROP 2>/dev/null \
+          || "$ipt" -I DOCKER-USER -i "$PUBIF" -m conntrack --ctstate NEW,INVALID -j DROP
+      done
+  - path: /etc/systemd/system/tars-docker-firewall.service
+    content: |
+      [Unit]
+      Description=Guard Docker-published ports against ufw bypass (DOCKER-USER drop on public NIC)
+      After=docker.service
+      Requires=docker.service
+      [Service]
+      Type=oneshot
+      RemainAfterExit=true
+      ExecStart=/usr/local/sbin/tars-docker-firewall.sh
+      [Install]
+      WantedBy=multi-user.target
+
+runcmd:
+  # 2 GB swap so Ollama + Postgres never OOM the 4 GB box.
+  - [bash, -c, 'fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile && echo "/swapfile none swap sw 0 0" >> /etc/fstab']
+  - [sysctl, --system]
+  # Firewall: deny all inbound, allow SSH + established. Tailscale traffic rides its own
+  # interface; the OAuth port is bound to host loopback only, so nothing else opens.
+  - [ufw, default, deny, incoming]
+  - [ufw, default, allow, outgoing]
+  # Public SSH is open ONLY so you can reach the box before it has joined the tailnet.
+  # bootstrap.sh closes 22/tcp once Tailscale is up, leaving SSH reachable over the tailnet
+  # (tailscale0 + Tailscale SSH) only. Set TARS_KEEP_PUBLIC_SSH=1 when running bootstrap to
+  # keep it open.
+  - [ufw, allow, '22/tcp']
+  - [ufw, allow, in, on, tailscale0]
+  - [bash, -c, 'ufw --force enable']
+  # Docker (official convenience script) + Tailscale.
+  - [bash, -c, 'curl -fsSL https://get.docker.com | sh']
+  - [bash, -c, 'usermod -aG docker tars']
+  - [bash, -c, 'curl -fsSL https://tailscale.com/install.sh | sh']
+  - [systemctl, enable, --now, docker]
+  # Install the DOCKER-USER ufw-bypass guard once docker's chains exist (and on every boot).
+  - [systemctl, enable, --now, tars-docker-firewall.service]
+  - [systemctl, enable, --now, fail2ban]
+  - [systemctl, restart, ssh]
+
+final_message: "Tars host hardened. SSH in as tars@<ip> and run deploy/cloud/bootstrap.sh"
