@@ -11,6 +11,9 @@ export default tseslint.config(
       '**/*.tsbuildinfo',
       'coverage/**',
       'packages/server/scripts/**',
+      // Operational launchd/runtime scripts (voice stack) — not library code, same
+      // rationale as server/scripts above.
+      'voice/**',
       '**/*.config.js',
       '**/*.config.ts',
     ],

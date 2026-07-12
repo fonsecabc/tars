@@ -120,7 +120,10 @@ export const meta = {
 
 // CONFIGURE — one entry per platform connector you want a persona for.
 const PLATFORMS = [
-  { key: 'Slack', how: 'the team-chat connector; sample across DMs and channels the user posts in' },
+  {
+    key: 'Slack',
+    how: 'the team-chat connector; sample across DMs and channels the user posts in',
+  },
   { key: 'Email', how: 'the email connector; sample the Sent folder' },
   { key: 'WhatsApp', how: "the user's own WhatsApp account (not Tars's outbox line)" },
   { key: 'LinkedIn', how: 'the LinkedIn connector; sample messages and post drafts/comments' },
@@ -130,19 +133,20 @@ const PLATFORMS = [
 phase('Learn');
 const summaries = (
   await parallel(
-    PLATFORMS.map((p) => () =>
-      agent(
-        `Build/refresh the voice persona for how the user writes on ${p.key}, reading from ${p.how}. ` +
-          `Read only the user's own authored messages, never other people's. Extract atomic traits ` +
-          `(register, length/structure, punctuation/emoji habits, openers/closers, vocabulary, ` +
-          `audience-tagged variants if the platform has distinct registers). Recall the brain entity ` +
-          `Voice:${p.key} (type voice_persona) first, reuse or create it by exact (type, name), add new ` +
-          `traits as atomic observations with today's validFrom, memory_correct any that changed, and ` +
-          `link it to the user with predicate voice_of. Do not store the raw sampled messages. If ${p.key} ` +
-          `has no connector available or no sent messages to sample, say so and do nothing else. ` +
-          `Return a short human-readable summary of what you stored.`,
-        { label: `learn:${p.key}` },
-      ).then((summary) => ({ platform: p.key, summary })),
+    PLATFORMS.map(
+      (p) => () =>
+        agent(
+          `Build/refresh the voice persona for how the user writes on ${p.key}, reading from ${p.how}. ` +
+            `Read only the user's own authored messages, never other people's. Extract atomic traits ` +
+            `(register, length/structure, punctuation/emoji habits, openers/closers, vocabulary, ` +
+            `audience-tagged variants if the platform has distinct registers). Recall the brain entity ` +
+            `Voice:${p.key} (type voice_persona) first, reuse or create it by exact (type, name), add new ` +
+            `traits as atomic observations with today's validFrom, memory_correct any that changed, and ` +
+            `link it to the user with predicate voice_of. Do not store the raw sampled messages. If ${p.key} ` +
+            `has no connector available or no sent messages to sample, say so and do nothing else. ` +
+            `Return a short human-readable summary of what you stored.`,
+          { label: `learn:${p.key}` },
+        ).then((summary) => ({ platform: p.key, summary })),
     ),
   )
 ).filter(Boolean);
@@ -177,7 +181,7 @@ every platform rather than replacing them.
 
 `taste-slack-voice` and `whatsapp-voice` (Claude Code skills, not part of this repo) are the
 hand-written precursors to this pattern — they encode Caio's Slack/WhatsApp voice as static
-prose with pre-decided modes. This routine supersedes the *source of truth* for that content:
+prose with pre-decided modes. This routine supersedes the _source of truth_ for that content:
 the traits should live in `Voice:Slack` / `Voice:WhatsApp` brain entities, re-derivable and
 correctable, rather than only in a skill file someone has to remember to update by hand. The
 skills can stay as thin wrappers that recall the brain persona and layer platform-specific
@@ -190,7 +194,7 @@ description themselves.
   messages; Draft never sends. The one write path is the brain (persona traits), same carve-out
   used by [the briefing routine](briefing.md#read_only).
 - **One entity per platform, audience as a tag, not a new entity.** Keeps `memory_recall "voice
-  persona"` cheap and avoids an explosion of near-duplicate personas; a platform with genuinely
+persona"` cheap and avoids an explosion of near-duplicate personas; a platform with genuinely
   incompatible registers (rare) is the only case that earns a second entity.
 - **Traits are atomic and dated**, so drift over months is visible in `memory_timeline` and a
   contradicted trait is `memory_correct`-ed rather than left to rot next to its replacement —

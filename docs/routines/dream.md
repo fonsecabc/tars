@@ -76,13 +76,13 @@ on NREM oscillatory coupling and REM integration listed at the end.
 
 ## Configuration
 
-| Key            | What to set                                       | Notes                                                                                                                                                                                                                |
-| -------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `SOURCES`      | The connectors to replay each night               | Any mix of messaging + meetings + your assistant's own chat transcripts — e.g. a chat app, a team workspace, a social/DM inbox (X/Twitter), email, calendar, meeting-transcript tools. List the read tools for each. |
-| `WINDOW`       | last `dream` marker → now (fallback: last 24–36h) | The day being consolidated. See _Replay window_.                                                                                                                                                                     |
-| `WRITE_POLICY` | `auto-apply` or `propose-then-confirm`            | Auto-apply writes directly (every write is audited and reversible); propose emits a report and waits.                                                                                                                |
-| `DREAM_MARKER` | `event` entity named `Dream <YYYY-MM-DD>`         | Records what was consolidated; also the next run's window anchor.                                                                                                                                                    |
-| `RUN_TIME`     | a low-activity hour, in your local timezone       | e.g. nightly ~03:30.                                                                                                                                                                                                 |
+| Key             | What to set                                                                                     | Notes                                                                                                                                                                                                                                                                                                         |
+| --------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SOURCES`       | The connectors to replay each night                                                             | Any mix of messaging + meetings + your assistant's own chat transcripts — e.g. a chat app, a team workspace, a social/DM inbox (X/Twitter), email, calendar, meeting-transcript tools. List the read tools for each.                                                                                          |
+| `WINDOW`        | last `dream` marker → now (fallback: last 24–36h)                                               | The day being consolidated. See _Replay window_.                                                                                                                                                                                                                                                              |
+| `WRITE_POLICY`  | `auto-apply` or `propose-then-confirm`                                                          | Auto-apply writes directly (every write is audited and reversible); propose emits a report and waits.                                                                                                                                                                                                         |
+| `DREAM_MARKER`  | `event` entity named `Dream <YYYY-MM-DD>`                                                       | Records what was consolidated; also the next run's window anchor.                                                                                                                                                                                                                                             |
+| `RUN_TIME`      | a low-activity hour, in your local timezone                                                     | e.g. nightly ~03:30.                                                                                                                                                                                                                                                                                          |
 | `PRIMER_TARGET` | your host's persistent instructions file, if it has one (e.g. Claude Code's global `CLAUDE.md`) | Optional. Enables Stage 5 — a short "what's live right now" note written for tomorrow's cold-start session. Leave unset on hosts where instructions live in a UI field, not a file (Desktop custom instructions, claude.ai project instructions) — there's no reliable way to write there, so skip the stage. |
 
 **Boundary:** the routine _reads_ from your source connectors and _writes only_ to the Tars
@@ -123,16 +123,16 @@ find-or-create on the same name double-creates entities. So replay (read-only) f
 a **dedup barrier** then merges candidates across conversations; then writes fan out
 **partitioned by entity**, so no two agents ever touch the same one.
 
-| Phase             | Parallelism                  | Why                                                                    |
-| ----------------- | ---------------------------- | ---------------------------------------------------------------------- |
-| Window            | single                       | Read the last marker; everything depends on it.                        |
-| Enumerate         | **fan-out per source**       | Cheap listing — every conversation with in-window activity. Read-only. |
-| Deep replay       | **fan-out per conversation** | The slow I/O — one full-thread reader per conversation, never sampled. |
-| _(dedup barrier)_ | —                            | Merge candidates so one person ≠ two entities.                         |
-| Consolidate       | **fan-out per entity**       | Disjoint entities → no write races. recall-before-write each.          |
-| Integrate         | **fan-out per entity**       | All entities exist; link / abstract / reconcile each.                  |
-| Renormalize       | single (barrier)             | Merging duplicates and pruning need a cross-entity view.               |
-| Wake              | single                       | Lay the marker + report (needs aggregate counts).                      |
+| Phase             | Parallelism                  | Why                                                                                                                                  |
+| ----------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Window            | single                       | Read the last marker; everything depends on it.                                                                                      |
+| Enumerate         | **fan-out per source**       | Cheap listing — every conversation with in-window activity. Read-only.                                                               |
+| Deep replay       | **fan-out per conversation** | The slow I/O — one full-thread reader per conversation, never sampled.                                                               |
+| _(dedup barrier)_ | —                            | Merge candidates so one person ≠ two entities.                                                                                       |
+| Consolidate       | **fan-out per entity**       | Disjoint entities → no write races. recall-before-write each.                                                                        |
+| Integrate         | **fan-out per entity**       | All entities exist; link / abstract / reconcile each.                                                                                |
+| Renormalize       | single (barrier)             | Merging duplicates and pruning need a cross-entity view.                                                                             |
+| Wake              | single                       | Lay the marker + report (needs aggregate counts).                                                                                    |
 | Prime             | single                       | Global view (tonight's entities + still-open commitments) to draft one primer. Skips cleanly if `PRIMER_TARGET` is unset/unwritable. |
 
 A runnable script is in _Dream workflow script_ near the end of this file (one `CONFIGURE` block
@@ -592,7 +592,11 @@ if (PRIMER_TARGET) {
       `3) Read ${PRIMER_TARGET}. If markers "<!-- TARS:TODAY:START -->" / "<!-- TARS:TODAY:END -->" exist, replace ONLY the text between them (full overwrite, never append, so resolved items drop off). If they don't exist, insert the block once, directly under the file's first heading: a "## Working context" section headed "As of <today's date>:" followed by the bullets, wrapped in those two markers, with a one-line note that this is a fast primer regenerated nightly and the brain remains ground truth. Touch NOTHING else in that file. ` +
       `4) If the file doesn't exist, isn't writable, or the edit fails, skip cleanly and say so — do not retry-loop or fail the run over this. Return a one-line summary of what you wrote or why you skipped.`,
     {
-      schema: { type: 'object', properties: { summary: { type: 'string' } }, required: ['summary'] },
+      schema: {
+        type: 'object',
+        properties: { summary: { type: 'string' } },
+        required: ['summary'],
+      },
       label: 'prime',
       phase: 'Prime',
     },
