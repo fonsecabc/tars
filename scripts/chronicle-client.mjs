@@ -55,9 +55,9 @@ export function appendEvent(sessionId, { harness, actor, kind, payload, holder, 
  * semantics over HTTP. `events` = [{ actor, kind, payload }].
  */
 export async function ingestBatch({ origin, externalRef, title, tier, metadata }, holder, events) {
-  const sessions = await get(
-    `/sessions?origin=${encodeURIComponent(origin)}&limit=500`,
-  ).catch(() => []);
+  const sessions = await get(`/sessions?origin=${encodeURIComponent(origin)}&limit=500`).catch(
+    () => [],
+  );
   let session = sessions.find((s) => s.externalRef === externalRef);
   if (!session) {
     session = (await openSession({ origin, externalRef, title, tier, metadata })).session;

@@ -14,6 +14,7 @@ export default tseslint.config(
       // Operational launchd/runtime scripts (voice stack) — not library code, same
       // rationale as server/scripts above.
       'voice/**',
+      'scripts/**',
       // Other sessions' git worktrees and Python venvs live inside the checkout — never lint
       // them from the primary working tree.
       '.claude/**',

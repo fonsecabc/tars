@@ -79,7 +79,9 @@ async function cycle(state) {
   for (const { filePath, projectDir, ccSessionId } of transcriptFiles()) {
     let lines;
     try {
-      lines = readFileSync(filePath, 'utf8').split('\n').filter((l) => l.trim() !== '');
+      lines = readFileSync(filePath, 'utf8')
+        .split('\n')
+        .filter((l) => l.trim() !== '');
     } catch {
       continue;
     }
@@ -107,7 +109,9 @@ async function cycle(state) {
           'cc-shadow:tailer',
           events.map((e) => ({ actor: e.actor, kind: e.kind, payload: e.payload })),
         );
-        log(`ingested ${events.length} event(s) from ${ccSessionId} (lines ${known}..${known + fresh.length})`);
+        log(
+          `ingested ${events.length} event(s) from ${ccSessionId} (lines ${known}..${known + fresh.length})`,
+        );
       }
       // Advance only after a successful ingest (or when the fresh lines held nothing worth
       // recording — skipping those permanently is correct, they parse to nothing every time).

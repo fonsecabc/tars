@@ -23,7 +23,11 @@ const runId = `${new Date().toISOString()}-${randomUUID().slice(0, 8)}`;
 const clip = (t) => (t.length > 2000 ? `${t.slice(0, 2000)}…` : t);
 
 const events = [
-  { actor: 'system', kind: 'turn_started', payload: { runId, startedAt: new Date().toISOString() } },
+  {
+    actor: 'system',
+    kind: 'turn_started',
+    payload: { runId, startedAt: new Date().toISOString() },
+  },
   ...(summary
     ? [{ actor: 'assistant', kind: 'turn_message', payload: { text: clip(summary), runId } }]
     : []),

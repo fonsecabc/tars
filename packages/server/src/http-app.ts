@@ -17,6 +17,7 @@ import { rateLimit } from 'express-rate-limit';
 import { createSessionsMessageRouter } from './sessions-message-routes.js';
 import { createSessionsRouter } from './sessions-routes.js';
 import { createSessionsWriteRouter } from './sessions-write-routes.js';
+import { createWatchRouter } from './watch-route.js';
 
 export interface AuthConfig {
   /** OAuth provider implementing authorize/token/verify (e.g. TarsOAuthProvider). */
@@ -112,6 +113,8 @@ export function createApp(options: AppOptions): Express {
     // Messaging surface (POST /messages, /signals; GET /harnesses/:harness/inbox) —
     // inter-session agent-to-agent traffic. Same loopback-only trust model.
     app.use(...guards, createSessionsMessageRouter(options.sessions));
+    // Live watch dashboard (GET /watch) — self-contained HTML over the read surface.
+    app.use(...guards, createWatchRouter());
   }
 
   const handlePost: RequestHandler = async (req: Request, res: Response) => {
