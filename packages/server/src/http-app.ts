@@ -14,6 +14,7 @@ import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import express, { type Express, type Request, type RequestHandler, type Response } from 'express';
 import { rateLimit } from 'express-rate-limit';
 
+import { createSessionsMessageRouter } from './sessions-message-routes.js';
 import { createSessionsRouter } from './sessions-routes.js';
 import { createSessionsWriteRouter } from './sessions-write-routes.js';
 
@@ -108,6 +109,9 @@ export function createApp(options: AppOptions): Express {
     // out-of-process harnesses (voice/whatsapp/cron .mjs) write to the log at activation.
     // Same trust model as the read router: loopback-only via main.ts wiring.
     app.use(...guards, createSessionsWriteRouter(options.sessions));
+    // Messaging surface (POST /messages, /signals; GET /harnesses/:harness/inbox) —
+    // inter-session agent-to-agent traffic. Same loopback-only trust model.
+    app.use(...guards, createSessionsMessageRouter(options.sessions));
   }
 
   const handlePost: RequestHandler = async (req: Request, res: Response) => {

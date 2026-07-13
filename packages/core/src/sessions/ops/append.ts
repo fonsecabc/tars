@@ -16,6 +16,7 @@ import type { Pool } from 'pg';
 import { withTransaction } from '../../db/tx.js';
 import { appendAudit } from '../../store/audit.js';
 import {
+  HopCountExceededError,
   LeaseConflictError,
   LeaseExpiredError,
   LeaseRequiredError,
@@ -23,7 +24,7 @@ import {
 } from '../errors.js';
 import type { Uuid } from '../../schema/common.js';
 import * as store from '../store/index.js';
-import { laneOf } from '../types.js';
+import { laneOf, MAX_MESSAGE_HOPS } from '../types.js';
 import type {
   AppendEventInput,
   Harness,
@@ -71,6 +72,17 @@ export async function appendEvent(
       }
       if (opts.expectedEpoch !== undefined && lease.epoch !== opts.expectedEpoch) {
         throw new StaleLeaseError(input.sessionId, opts.expectedEpoch, lease.epoch);
+      }
+    }
+
+    // Loop cap — enforced HERE (the single choke point) so every append path is covered,
+    // whether it comes through the messaging ops or the raw HTTP /events route. An A→B→C…
+    // agent-to-agent chain dies after MAX_MESSAGE_HOPS.
+    if (input.kind === 'message') {
+      const rawHops = input.payload?.['hop_count'];
+      const hopCount = typeof rawHops === 'number' ? rawHops : 0;
+      if (hopCount > MAX_MESSAGE_HOPS) {
+        throw new HopCountExceededError(input.sessionId, hopCount, MAX_MESSAGE_HOPS);
       }
     }
 

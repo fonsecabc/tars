@@ -23,9 +23,16 @@ export type { Uuid } from '../schema/common.js';
 /**
  * A TARS harness that can own/produce session activity. Closed at the TS contract (widening
  * it later is non-breaking); the DB `harness`/`origin` columns stay plain `text` so the
- * vocabulary can grow without a migration.
+ * vocabulary can grow without a migration. The runtime array exists so address resolution
+ * ('@voice' → the voice inbox) can validate harness names at runtime.
  */
-export type Harness = 'voice' | 'whatsapp' | 'cron' | 'cc-shadow' | 'slack';
+export const HARNESSES = ['voice', 'whatsapp', 'cron', 'cc-shadow', 'slack'] as const;
+export type Harness = (typeof HARNESSES)[number];
+
+/** Runtime type guard for harness names arriving from transport/addresses. */
+export function isHarness(value: string): value is Harness {
+  return (HARNESSES as readonly string[]).includes(value);
+}
 
 // --- Event kinds + lanes ----------------------------------------------------
 
@@ -62,6 +69,17 @@ export type EventKind = TurnLaneKind | MessageLaneKind;
 export const EVENT_KINDS = [...TURN_LANE_KINDS, ...MESSAGE_LANE_KINDS] as const;
 
 export type Lane = 'turn' | 'message';
+
+/**
+ * Loop cap for inter-session messages: a `message` event whose payload.hop_count exceeds
+ * this is rejected at append (agent A messages B messages C… chains die after 4 hops).
+ * Senders set hop_count = parent message's hop_count + 1 when replying/forwarding.
+ */
+export const MAX_MESSAGE_HOPS = 4;
+
+/** Control-channel verbs carried by `signal` events (payload.signal). */
+export const SIGNAL_KINDS = ['ping', 'pause', 'cancel', 'wake'] as const;
+export type SignalKind = (typeof SIGNAL_KINDS)[number];
 
 /** Runtime lane membership — the append op gates by lane, not by a blanket lease check. */
 export const TURN_LANE: ReadonlySet<EventKind> = new Set(TURN_LANE_KINDS);

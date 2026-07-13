@@ -71,6 +71,10 @@ const fakeService: SessionService = {
 
   // Unused by this transport surface -----------------------------------------------------
   getSessionByRef: notUsed,
+  sendMessage: notUsed,
+  sendSignal: notUsed,
+  ensureInbox: notUsed,
+  listInbox: notUsed,
   open: notUsed,
   append: notUsed,
   checkpoint: notUsed,

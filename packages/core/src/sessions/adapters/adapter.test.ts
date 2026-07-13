@@ -108,6 +108,10 @@ function makeFake(overrides: FakeOverrides = {}): { service: SessionService; cal
     getSession: notUsed,
     listEvents: notUsed,
     listEventsSince: notUsed,
+    sendMessage: notUsed,
+    sendSignal: notUsed,
+    ensureInbox: notUsed,
+    listInbox: notUsed,
   };
   return { service, calls };
 }

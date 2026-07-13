@@ -115,6 +115,10 @@ const fakeService: SessionService = {
   getSessionByRef: notUsed,
   listEvents: notUsed,
   listEventsSince: notUsed,
+  sendMessage: notUsed,
+  sendSignal: notUsed,
+  ensureInbox: notUsed,
+  listInbox: notUsed,
 };
 
 let httpServer!: Server;

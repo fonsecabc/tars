@@ -4,3 +4,4 @@
 // wires their exports here.
 export * from './append.js';
 export * from './lease.js';
+export * from './messaging.js';

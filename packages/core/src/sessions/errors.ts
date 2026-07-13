@@ -65,3 +65,19 @@ export class LeaseNotRenewableError extends TarsError {
     super(`lease for session ${sessionId} is not renewable by ${holder} (expired or not held)`);
   }
 }
+
+/**
+ * Loop cap: an inter-session `message` exceeded MAX_MESSAGE_HOPS — an agent-to-agent chain
+ * (A messages B messages C…) is being cut off before it ping-pongs forever.
+ */
+export class HopCountExceededError extends TarsError {
+  constructor(
+    readonly sessionId: string,
+    readonly hopCount: number,
+    readonly maxHops: number,
+  ) {
+    super(
+      `message to session ${sessionId} exceeded the hop cap (${hopCount} > ${maxHops}); dropping to break the loop`,
+    );
+  }
+}

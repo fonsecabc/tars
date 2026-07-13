@@ -22,9 +22,12 @@ import type {
   AcquireLeaseInput,
   AppendOptions,
   CheckpointInput,
+  InboxView,
   OpenSessionOptions,
   ReleaseLeaseInput,
   RenewLeaseInput,
+  SendMessageInput,
+  SendSignalInput,
   TakeOverLeaseInput,
 } from './ops/index.js';
 import type { AppendEventInput } from './types.js';
@@ -41,6 +44,12 @@ export interface SessionService {
   renewLease(input: RenewLeaseInput): Promise<SessionLease>;
   takeOverLease(input: TakeOverLeaseInput): Promise<SessionLease>;
   releaseLease(input: ReleaseLeaseInput): Promise<boolean>;
+
+  // Messaging (message/signal lanes — ungated by leases) -----------------------------------
+  sendMessage(input: SendMessageInput): Promise<SessionEvent>;
+  sendSignal(input: SendSignalInput): Promise<SessionEvent>;
+  ensureInbox(harness: Harness): Promise<Session>;
+  listInbox(harness: Harness, opts?: { afterSeq?: string; limit?: number }): Promise<InboxView>;
 
   // Reads (via store) ----------------------------------------------------------------------
   getLease(sessionId: Uuid): Promise<SessionLease | undefined>;
@@ -67,6 +76,11 @@ export function createSessionService(pool: Pool): SessionService {
     renewLease: (input) => ops.renewLease(pool, input),
     takeOverLease: (input) => ops.takeOverLease(pool, input),
     releaseLease: (input) => ops.releaseLease(pool, input),
+
+    sendMessage: (input) => ops.sendMessage(pool, input),
+    sendSignal: (input) => ops.sendSignal(pool, input),
+    ensureInbox: (harness) => ops.ensureInbox(pool, harness),
+    listInbox: (harness, opts) => ops.listInbox(pool, harness, opts),
 
     getLease: (sessionId) => store.getLease(pool, sessionId),
     listSessions: (opts) => store.listSessions(pool, opts),
