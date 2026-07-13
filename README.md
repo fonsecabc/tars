@@ -60,13 +60,23 @@ make doctor           # verify everything is green
 > server, MCPs, the TARS persona, seeding the brain, and turning on the nightly/morning
 > routines, in order.
 
-`make setup` is idempotent (safe to re-run) and **detects-or-installs** everything via
-Homebrew: Node 20+ (24 recommended, pinned in `.nvmrc`), pnpm (corepack), Colima + the
-Docker CLI + Compose, and Ollama (it
-pulls `nomic-embed-text`, the 768-dim embedding model the schema expects). It also starts
-Colima, generates a real `POSTGRES_PASSWORD` into `.env` + `deploy/docker/.env` (an
-**existing** data volume keeps its password so your brain is never locked out), installs
-deps, builds, and brings up Postgres. The only manual prerequisite is
+`make setup` starts by **assessing your Mac** (RAM/chip) and asking how you want TARS to
+remember — a one-question choice between two profiles:
+
+- **Simple** (default, recommended) — smart brain + memory graph, **no local AI model**.
+  Lightest install, great on a laptop, best for non-technical users. Sets
+  `EMBEDDING_PROVIDER=null` (keyword + graph recall; your assistant does the semantic
+  reasoning on top).
+- **Full** — also installs Ollama and pulls `nomic-embed-text` (the 768-dim embedding model
+  the schema expects) for fuzzy semantic search and the voice stack. Wants 16GB+ RAM and an
+  always-on Mac. Sets `EMBEDDING_PROVIDER=ollama`.
+
+Set `TARS_PROFILE=simple` (or `full`) to answer ahead of time and run unattended. Otherwise
+`make setup` is idempotent (safe to re-run) and **detects-or-installs** the rest via Homebrew:
+Node 20+ (24 recommended, pinned in `.nvmrc`), pnpm (corepack), and Colima + the Docker CLI +
+Compose. It starts Colima, generates a real `POSTGRES_PASSWORD` into `.env` +
+`deploy/docker/.env` (an **existing** data volume keeps its password so your brain is never
+locked out), installs deps, builds, and brings up Postgres. The only manual prerequisite is
 [Homebrew](https://brew.sh).
 
 ### Make targets
