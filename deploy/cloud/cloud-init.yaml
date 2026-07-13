@@ -109,7 +109,11 @@ write_files:
 
 runcmd:
   # 2 GB swap so Ollama + Postgres never OOM the 4 GB box.
-  - [bash, -c, 'fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile && echo "/swapfile none swap sw 0 0" >> /etc/fstab']
+  - [
+      bash,
+      -c,
+      'fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile && echo "/swapfile none swap sw 0 0" >> /etc/fstab',
+    ]
   - [sysctl, --system]
   # Firewall: deny all inbound, allow SSH + established. Tailscale traffic rides its own
   # interface; the OAuth port is bound to host loopback only, so nothing else opens.
@@ -132,4 +136,4 @@ runcmd:
   - [systemctl, enable, --now, fail2ban]
   - [systemctl, restart, ssh]
 
-final_message: "Tars host hardened. SSH in as tars@<ip> and run deploy/cloud/bootstrap.sh"
+final_message: 'Tars host hardened. SSH in as tars@<ip> and run deploy/cloud/bootstrap.sh'

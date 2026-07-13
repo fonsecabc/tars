@@ -20,10 +20,11 @@ holdings recorded in the brain, and everything else runs normally.
    - Sign in, choose "connect a bank", pick **C6 Bank**.
    - Complete the **Open Finance consent** (CPF + approve the share in the C6 app).
    - This creates a connected **item**; note its **`itemId`**.
-   *(Alternatively, connect C6 straight from the dashboard using the Pluggy Connect
-   widget and grab the `itemId` from there.)*
+     _(Alternatively, connect C6 straight from the dashboard using the Pluggy Connect
+     widget and grab the `itemId` from there.)_
 
 3. **Put the three values in `finance/.env`:**
+
    ```
    PLUGGY_CLIENT_ID=...
    PLUGGY_CLIENT_SECRET=...
@@ -40,6 +41,7 @@ holdings recorded in the brain, and everything else runs normally.
    written for the `tars-invest` routine to consume.
 
 ## Notes & honesty
+
 - **Refresh is not real-time.** Open Finance syncs periodically, and the consent needs
   re-authorising roughly every 12 months.
 - **The free path is a consumer product used for dev access** — tolerated, not

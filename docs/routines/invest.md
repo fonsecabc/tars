@@ -5,6 +5,7 @@ personal, runnable version lives outside the repo (`~/tars-invest.md`); the engi
 in `finance/`. No personal data here.
 
 ## What it is
+
 A weekly routine that reviews a long-term portfolio against a **target policy
 allocation**, measures drift, and produces one advisory digest: where to direct new
 contributions, what (if anything) to rebalance, and any planning flags. It is
@@ -12,10 +13,12 @@ deliberately boring — the evidence is that asset allocation drives ~90% of lon
 return variability and most active strategies lose to a low-cost index over 10-15y.
 
 ## Advisory only
+
 This routine **never trades**. It computes and proposes; the operator decides and
 executes. Every suggestion is a proposal to approve later.
 
 ## The cycle
+
 1. Assemble current holdings from memory (and a bank/Open-Finance sync where wired),
    bucketed by asset class (cash / domestic fixed income / domestic equity / global
    equity / crypto).
@@ -30,8 +33,10 @@ executes. Every suggestion is a proposal to approve later.
    to memory.
 
 ## Policy profiles
+
 Target weights are defined per risk profile (conservative / moderate / aggressive) in
 `portfolio.py`. The active profile is a per-operator setting.
 
 ## Schedule
+
 Weekly. Monthly is also reasonable.
