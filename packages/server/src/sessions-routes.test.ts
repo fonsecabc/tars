@@ -70,6 +70,7 @@ const fakeService: SessionService = {
   },
 
   // Unused by this transport surface -----------------------------------------------------
+  getSessionByRef: notUsed,
   open: notUsed,
   append: notUsed,
   checkpoint: notUsed,

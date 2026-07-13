@@ -15,6 +15,7 @@ import express, { type Express, type Request, type RequestHandler, type Response
 import { rateLimit } from 'express-rate-limit';
 
 import { createSessionsRouter } from './sessions-routes.js';
+import { createSessionsWriteRouter } from './sessions-write-routes.js';
 
 export interface AuthConfig {
   /** OAuth provider implementing authorize/token/verify (e.g. TarsOAuthProvider). */
@@ -103,6 +104,10 @@ export function createApp(options: AppOptions): Express {
   // off the tunnel until that gate lands.
   if (options.sessions) {
     app.use(...guards, createSessionsRouter(options.sessions));
+    // Write surface (POST /sessions, /:id/events, /:id/lease) — the transport that lets
+    // out-of-process harnesses (voice/whatsapp/cron .mjs) write to the log at activation.
+    // Same trust model as the read router: loopback-only via main.ts wiring.
+    app.use(...guards, createSessionsWriteRouter(options.sessions));
   }
 
   const handlePost: RequestHandler = async (req: Request, res: Response) => {

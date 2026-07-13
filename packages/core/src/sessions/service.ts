@@ -9,6 +9,7 @@ import type { Pool } from 'pg';
 import * as ops from './ops/index.js';
 import * as store from './store/index.js';
 import type {
+  Harness,
   ListEventsOptions,
   ListSessionsOptions,
   OpenSessionInput,
@@ -45,6 +46,11 @@ export interface SessionService {
   getLease(sessionId: Uuid): Promise<SessionLease | undefined>;
   listSessions(opts?: ListSessionsOptions): Promise<Session[]>;
   getSession(id: Uuid): Promise<Session | undefined>;
+  /**
+   * Look up a session by its harness-native identity WITHOUT opening it — unlike `open`,
+   * this never logs a `session_opened` resume marker. Adapters use it for find-or-open.
+   */
+  getSessionByRef(origin: Harness, externalRef: string): Promise<Session | undefined>;
   /** Per-session replay/tail: events with seq > opts.afterSeq, ascending. */
   listEvents(sessionId: Uuid, opts?: ListEventsOptions): Promise<SessionEvent[]>;
   /** Global tail across all sessions: events with seq > afterSeq (the SSE cursor). */
@@ -65,6 +71,8 @@ export function createSessionService(pool: Pool): SessionService {
     getLease: (sessionId) => store.getLease(pool, sessionId),
     listSessions: (opts) => store.listSessions(pool, opts),
     getSession: (id) => store.findSessionById(pool, id),
+    getSessionByRef: (origin, externalRef) =>
+      store.findSessionByExternalRef(pool, origin, externalRef),
     listEvents: (sessionId, opts) => store.listSessionEvents(pool, sessionId, opts),
     listEventsSince: (afterSeq, opts) => store.listEventsSince(pool, afterSeq, opts),
   };

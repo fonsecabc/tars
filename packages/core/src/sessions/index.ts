@@ -10,3 +10,4 @@ export * from './service.js';
 export * from './projector.js';
 export * as store from './store/index.js';
 export * as ops from './ops/index.js';
+export * as adapters from './adapters/index.js';
