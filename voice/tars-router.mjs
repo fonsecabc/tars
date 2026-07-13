@@ -108,11 +108,31 @@ const HISTORY_MAX = Number(process.env.TARS_HISTORY_MAX || 16); // ~8 exchanges
 const HISTORY_IDLE_MS = Number(process.env.TARS_HISTORY_IDLE_MS || 12 * 60 * 1000);
 let history = [];
 let lastTurnAt = 0;
+
+// Chronicle shared-session capture — every voice turn is mirrored into the session log
+// (origin 'voice', one session per day) fire-and-forget: Chronicle being down must never
+// affect the voice loop. Session-boundary policy: day-based conversation id for v1. Dynamic
+// import so a missing/broken client can never take the router down at boot.
+async function chronicleCapture(role, content) {
+  try {
+    const { ingestBatch } = await import('../scripts/chronicle-client.mjs');
+    const day = new Date().toISOString().slice(0, 10);
+    await ingestBatch(
+      { origin: 'voice', externalRef: `voice-${day}`, title: `Voice ${day}`, tier: 'owner' },
+      'voice:router',
+      [{ actor: role, kind: 'turn_message', payload: { text: content.slice(0, 2000) } }],
+    );
+  } catch (e) {
+    log('chronicle capture skipped:', e?.message || e);
+  }
+}
+
 function pushHistory(role, content) {
   const c = String(content || '').trim();
   if (!c) return;
   history.push({ role, content: c });
   if (history.length > HISTORY_MAX) history = history.slice(-HISTORY_MAX);
+  void chronicleCapture(role === 'user' ? 'user' : 'assistant', c);
 }
 
 const SCHEMA_NOTE = `Respond with ONLY a JSON object, no prose:
