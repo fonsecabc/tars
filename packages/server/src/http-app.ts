@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import type { Memory } from '@tars/core';
+import type { Memory, SessionService } from '@tars/core';
 import { registerMemoryTools } from '@tars/mcp';
 import { requireBearerAuth } from '@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js';
 import type { OAuthServerProvider } from '@modelcontextprotocol/sdk/server/auth/provider.js';
@@ -14,6 +14,10 @@ import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import express, { type Express, type Request, type RequestHandler, type Response } from 'express';
 import { rateLimit } from 'express-rate-limit';
 
+import { createSessionsMessageRouter } from './sessions-message-routes.js';
+import { createSessionsRouter } from './sessions-routes.js';
+import { createSessionsWriteRouter } from './sessions-write-routes.js';
+
 export interface AuthConfig {
   /** OAuth provider implementing authorize/token/verify (e.g. TarsOAuthProvider). */
   provider: OAuthServerProvider;
@@ -25,6 +29,12 @@ export interface AuthConfig {
 
 export interface AppOptions {
   memory: Memory;
+  /**
+   * When present, the Chronicle read + live-watch routes are mounted (`GET /sessions`,
+   * `/sessions/:id`, `/sessions/:id/events`, and the SSE `/sessions/:id/tail`). These are
+   * read-only; tier-gated write endpoints are a later concern. Omit to run memory-only.
+   */
+  sessions?: SessionService;
   serverInfo?: { name: string; version: string };
   /**
    * When present, OAuth endpoints are mounted and `/mcp` requires a valid bearer token.
@@ -86,6 +96,22 @@ export function createApp(options: AppOptions): Express {
         resourceMetadataUrl: getOAuthProtectedResourceMetadataUrl(baseUrl),
       }),
     );
+  }
+
+  // Chronicle read + live-watch routes. Guarded by `...guards` (bearer, when auth is set) so
+  // they are never less protected than /mcp. NOTE: main.ts wires `sessions` ONLY into the
+  // trusted loopback listener, not the public OAuth one — raw session transcripts are more
+  // sensitive than the distilled graph, and per-tier session ACLs don't exist yet. Keep them
+  // off the tunnel until that gate lands.
+  if (options.sessions) {
+    app.use(...guards, createSessionsRouter(options.sessions));
+    // Write surface (POST /sessions, /:id/events, /:id/lease) — the transport that lets
+    // out-of-process harnesses (voice/whatsapp/cron .mjs) write to the log at activation.
+    // Same trust model as the read router: loopback-only via main.ts wiring.
+    app.use(...guards, createSessionsWriteRouter(options.sessions));
+    // Messaging surface (POST /messages, /signals; GET /harnesses/:harness/inbox) —
+    // inter-session agent-to-agent traffic. Same loopback-only trust model.
+    app.use(...guards, createSessionsMessageRouter(options.sessions));
   }
 
   const handlePost: RequestHandler = async (req: Request, res: Response) => {
