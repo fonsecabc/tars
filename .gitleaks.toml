@@ -1,0 +1,21 @@
+# gitleaks config for Tars. Extends the default ruleset and allowlists the documentation
+# PLACEHOLDERS that trip the high-entropy generic-api-key rule (they are not secrets):
+#   deploy/cloud/bootstrap.sh      B2_ACCOUNT_KEY=__PASTE_B2_applicationKey__
+#   deploy/cloud/tars.env.example  # B2_ACCOUNT_KEY=__b2_applicationKey__
+# Run: gitleaks git --redact -v .   (history)   |   gitleaks dir --redact -v .   (worktree)
+title = "tars"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "generic-api-key"
+description = "Generic API Key"
+regex = '''(?i)(?:key|api|token|secret|client|passwd|password|auth|access)[0-9a-z\-_\t .]{0,20}(?:[\s|']|[\s|"]){0,3}(?:=|>|:{1,3}=|\|\||:|<=|=>|:=)(?:'|\"|\s|=|\x60){0,5}([0-9a-z\-_.=]{10,150})(?:['|\"|\n|\r|\s|\x60|;]|$)'''
+[rules.allowlist]
+regexTarget = "line"
+regexes = [
+  '''__PASTE_[A-Za-z0-9_]+__''',
+  '''__b2_[A-Za-z0-9_]+__''',
+  '''__generated_on_server__''',
+]

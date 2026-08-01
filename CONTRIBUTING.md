@@ -69,5 +69,5 @@ pnpm check         # format:check + lint + typecheck + build + test
 - CI runs the green gate on Node 20 and 24 against a pgvector Postgres service.
 
 By contributing you agree your contributions are licensed under the
-[PolyForm Internal Use License 1.0.0](LICENSE) — free to use and modify for **personal and
-internal business** purposes; not for sale or redistribution.
+[Elastic License 2.0](LICENSE) — free to use, modify, run at work, fork, and contribute back;
+not to be resold as a hosted or managed service.

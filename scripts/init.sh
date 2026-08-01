@@ -31,6 +31,10 @@ SEL_engine=-1 SEL_service=-1 SEL_mcp=-1 SEL_persona=-1 SEL_voice=-1   # -1 = uns
 ASSUME_YES=0 JSON=0 DRY_RUN=0 NO_VERIFY=0 DO_STATUS=0 INSTALL_PROMPT=-1
 OWNER_NAME="${TARS_OWNER_NAME:-}"
 ANY_SEL_FLAG=0
+# Engine profile (v0.7.0 setup.sh): simple = brain + graph, no local model; full = also a
+# local embedding model. setup.sh ASKS when a TTY is present, which would hang an agent —
+# so headless runs always pass one explicitly (default: simple, the safe/light choice).
+PROFILE="${TARS_PROFILE:-}"
 
 # --all covers the four core components; voice is an advanced/heavy extra (mic + whisper +
 # local TTS), opt-in only via --components …,voice — never pulled in by --all.
@@ -44,6 +48,9 @@ Selection
   --all                     Install the four core components (engine,service,mcp,persona)
   --components LIST          Comma list: engine,service,mcp,persona,voice
                              (voice = advanced hands-free mic+TTS, macOS-only, not in --all)
+Engine
+  --profile simple|full      simple = brain + graph, no local model (default headless);
+                             full = also install local embeddings. Avoids setup.sh prompting.
 Persona
   --owner-name NAME          What TARS calls the user (else git user.name, else placeholder)
   --install-prompt           Merge the persona into ~/.claude/CLAUDE.md (else just write the file)
@@ -73,6 +80,9 @@ while [[ $# -gt 0 ]]; do
           '') : ;; *) die "unknown component: $c (want engine|service|mcp|persona|voice)" ;;
         esac
       done ;;
+    --profile)
+      PROFILE="${2:-}"; shift
+      [[ "$PROFILE" == simple || "$PROFILE" == full ]] || die "--profile must be 'simple' or 'full'" ;;
     --owner-name) OWNER_NAME="${2:-}"; shift ;;
     --install-prompt) INSTALL_PROMPT=1 ;;
     --claude-md) CLAUDE_MD="${2:-}"; shift ;;
@@ -176,7 +186,13 @@ R_persona_installed=false R_owner="" R_mcp_state=""
 
 do_engine() {
   step "Engine"
-  if [[ $DRY_RUN == 1 ]]; then info "(dry-run) would run setup"; R_engine=planned; return; fi
+  # Never let setup.sh stop to ask: pin the profile whenever we're driving headlessly.
+  if [[ -z "$PROFILE" && ( $ASSUME_YES == 1 || $JSON == 1 || ! -r /dev/tty ) ]]; then
+    PROFILE=simple
+    info "No --profile given; using 'simple' (no local model) so setup never prompts."
+  fi
+  [[ -n "$PROFILE" ]] && export TARS_PROFILE="$PROFILE"
+  if [[ $DRY_RUN == 1 ]]; then info "(dry-run) would run setup (profile=${PROFILE:-ask})"; R_engine=planned; return; fi
   if is_macos; then bash "$REPO_ROOT/scripts/setup.sh"; R_engine=ok
   else
     have node || die "Node 20+ required."
@@ -279,7 +295,7 @@ emit_json() {
     "$([[ $DRY_RUN == 1 ]] && echo true || echo false)" \
     "$(is_macos && echo macos || echo linux)" "$su"
   printf '"components":{'
-  printf '"engine":{"selected":%s,"status":"%s"},'  "$([[ $SEL_engine == 1 ]] && echo true || echo false)"  "$R_engine"
+  printf '"engine":{"selected":%s,"status":"%s","profile":"%s"},' "$([[ $SEL_engine == 1 ]] && echo true || echo false)" "$R_engine" "$(json_escape "$PROFILE")"
   printf '"service":{"selected":%s,"status":"%s"},' "$([[ $SEL_service == 1 ]] && echo true || echo false)" "$R_service"
   printf '"mcp":{"selected":%s,"status":"%s","url":"%s"},' "$([[ $SEL_mcp == 1 ]] && echo true || echo false)" "$R_mcp" "$MCP_URL"
   printf '"persona":{"selected":%s,"status":"%s","installed":%s,"ownerName":"%s","promptPath":"%s"},' \
@@ -294,7 +310,7 @@ emit_json() {
 # --- Run -----------------------------------------------------------------------------------
 step "Tars setup"
 info "Self-hosted, single-user memory for your AI assistant. The brain ships EMPTY."
-info "Plan: engine=$SEL_engine service=$SEL_service mcp=$SEL_mcp persona=$SEL_persona voice=$SEL_voice  (dry-run=$DRY_RUN)"
+info "Plan: engine=$SEL_engine service=$SEL_service mcp=$SEL_mcp persona=$SEL_persona voice=$SEL_voice  (profile=${PROFILE:-auto}, dry-run=$DRY_RUN)"
 
 [[ $SEL_engine  == 1 ]] && do_engine
 [[ $SEL_service == 1 ]] && do_service

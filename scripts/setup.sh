@@ -36,19 +36,39 @@ fi
 brew_install colima
 brew_install docker docker        # the docker CLI
 brew_install docker-compose       # the 'docker compose' plugin (no Docker Desktop)
-brew_install ollama
 
-# --- 2. Ollama embedding model ---------------------------------------------
-step "Ollama embedding model (nomic-embed-text, 768-dim)"
-brew services start ollama >/dev/null 2>&1 || true
-# Give the daemon a moment to bind before pulling.
-for _ in $(seq 1 10); do curl -s -m 2 http://localhost:11434/api/tags >/dev/null 2>&1 && break; sleep 1; done
-if ollama list 2>/dev/null | grep -q '^nomic-embed-text'; then
-  ok "nomic-embed-text already pulled"
+# --- 2. Assess: which profile fits this person + this Mac? -----------------
+# Everything below (whether we install a local AI model at all) hangs off this
+# one choice. See resolve_profile in lib.sh for the simple-vs-full trade-off.
+step "Choosing your setup"
+machine_summary
+PROFILE="$(resolve_profile)"
+if [[ "$PROFILE" == "full" ]]; then
+  export TARS_EMBEDDING_PROVIDER=ollama
+  ok "Full profile — smart brain + a local AI model for fuzzy search."
 else
-  info "Pulling nomic-embed-text..."
-  ollama pull nomic-embed-text
-  ok "nomic-embed-text pulled"
+  export TARS_EMBEDDING_PROVIDER=null
+  ok "Simple profile — smart brain + memory graph. No local model to install."
+  info "Recall is keyword + graph; your assistant does the semantic reasoning on top."
+fi
+
+# --- 2b. Local AI model (Full profile only) --------------------------------
+if [[ "$PROFILE" == "full" ]]; then
+  brew_install ollama
+  step "Local embedding model (nomic-embed-text, 768-dim)"
+  brew services start ollama >/dev/null 2>&1 || true
+  # Give the daemon a moment to bind before pulling.
+  for _ in $(seq 1 10); do curl -s -m 2 http://localhost:11434/api/tags >/dev/null 2>&1 && break; sleep 1; done
+  if ollama list 2>/dev/null | grep -q '^nomic-embed-text'; then
+    ok "nomic-embed-text already pulled"
+  else
+    info "Pulling nomic-embed-text..."
+    ollama pull nomic-embed-text
+    ok "nomic-embed-text pulled"
+  fi
+else
+  step "Local embedding model"
+  ok "Skipped (Simple profile) — no multi-GB download, nothing extra to keep running."
 fi
 
 # --- 3. Colima (the Docker VM) ---------------------------------------------
@@ -86,6 +106,7 @@ else
 fi
 
 step "Setup complete"
-ok "Stack is built and the database is running."
+ok "Stack is built and the database is running ($PROFILE profile)."
 info "The brain ships EMPTY — no personal data until you add it."
 info "Next: 'make install-service' to run Tars always-on, then 'make doctor' to verify."
+info "Then seed it by just talking to TARS — see docs/onboarding.md (the interview)."

@@ -24,9 +24,14 @@ Tars deployment and any subset of connectors.
 
 Fill this in before running:
 
-- **Sources** — every connector you have available and want ingested, e.g.: personal
-  WhatsApp, Slack, Gmail, Google Calendar, Google Drive, Granola, Linear, LinkedIn. Skip
-  anything not connected — the routine degrades gracefully.
+- **Sources** — everything you have available and want ingested, across two kinds:
+  - **Connectors:** personal WhatsApp, Slack, Gmail, Google Calendar, Google Drive, Granola,
+    Linear, LinkedIn, Notion…
+  - **This computer:** local files and notes the host can reach — e.g. the macOS MCP
+    (Desktop/Documents, Notes, Contacts, Calendar) and any folders you point it at.
+
+  Skip anything not connected — the routine degrades gracefully, source by source.
+
 - **Depth per source** — how far back to look. Full history is ideal but not always
   practical (a WhatsApp export can span years); a reasonable default is "everything
   available without an explicit date filter" for chat/email, and "all" for calendars,
@@ -74,8 +79,9 @@ memory graph. This is not a recurring job; run it once, in full, then stop.
 Configuration:
 - User identity: <name + key aliases, if you already know them — otherwise leave blank and
   let the Seed phase resolve it>
-- Sources to sweep: <list only the connectors actually available, e.g. "personal WhatsApp,
-  Slack, Gmail, Google Calendar, Granola">
+- Sources to sweep: <list only what's actually available — connectors AND this computer,
+  e.g. "personal WhatsApp, Slack, Gmail, Google Calendar, Granola, plus local files via the
+  macOS MCP (Notes, Contacts, Desktop/Documents)">
 - Depth: full available history for chat/email; all records for calendar/meetings/trackers.
 
 Do this as a multi-agent workflow with three phases:
