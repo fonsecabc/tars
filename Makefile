@@ -4,11 +4,14 @@ SHELL := /bin/bash
 SCRIPTS := scripts
 
 .DEFAULT_GOAL := help
-.PHONY: help setup install-service uninstall-service start stop restart logs doctor tunnel check test install-janitor uninstall-janitor janitor-status
+.PHONY: help init setup install-service uninstall-service install-voice uninstall-voice start stop restart logs doctor tunnel check test install-janitor uninstall-janitor janitor-status
 
 help: ## Show this help
 	@grep -hE '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) \
 	  | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-18s\033[0m %s\n",$$1,$$2}'
+
+init: ## Interactive setup wizard — pick engine / service / MCP / persona
+	@bash $(SCRIPTS)/init.sh
 
 setup: ## Install prereqs, configure .env, build, and start Postgres (idempotent)
 	@bash $(SCRIPTS)/setup.sh
@@ -18,6 +21,12 @@ install-service: ## Generate + bootstrap the launchd service (always-on)
 
 uninstall-service: ## Stop and remove the launchd service
 	@bash $(SCRIPTS)/service.sh uninstall
+
+install-voice: ## Install the advanced hands-free voice stack (macOS: mic + local TTS)
+	@bash $(SCRIPTS)/voice.sh install
+
+uninstall-voice: ## Stop and remove the voice stack
+	@bash $(SCRIPTS)/voice.sh uninstall
 
 install-janitor: ## Install the periodic process-hygiene janitor (every 30 min)
 	@bash $(SCRIPTS)/janitor.sh install

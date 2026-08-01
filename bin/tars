@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+#
+# `tars` — the everyday command. A thin dispatcher over the repo's scripts, so once it's on
+# your PATH (tars init offers to symlink it) you can run ops from anywhere. Resolves its own
+# symlink to find the repo, so `~/.local/bin/tars` works no matter where the clone lives.
+set -euo pipefail
+
+# Resolve this script through any symlink chain (BSD-safe; no `readlink -f`).
+SOURCE="${BASH_SOURCE[0]}"
+while [[ -h "$SOURCE" ]]; do
+  DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ "$SOURCE" != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+BIN_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+REPO_ROOT="$(cd "$BIN_DIR/.." && pwd)"
+SCRIPTS="$REPO_ROOT/scripts"
+
+usage() {
+  cat <<'EOF'
+tars — self-hosted memory for your AI assistant
+
+Usage: tars <command>
+
+Setup (agent-first — all flag-driven, non-interactive; see `tars init --help`)
+  init [flags]         Set up Tars: --all|--components, --owner-name, --yes, --json, --dry-run
+  status [--json]      Report current state (engine/server/MCP/persona)
+  persona [flags]      Personalize + install the system prompt (--owner-name, --install-prompt)
+  setup                Install prereqs, configure .env, build, start Postgres
+  mcp                  Register the Tars MCP server with Claude Code
+
+Service (macOS / launchd)
+  start | stop | restart    Control the always-on server
+  install-service           Install the launchd service (always-on)
+  uninstall-service         Remove the launchd service
+  voice {install|uninstall|status}   Advanced hands-free voice stack (mic + local TTS)
+  logs                      Tail the server logs
+
+Ops
+  doctor               Health-check the whole stack, with fixes
+  tunnel               Expose the OAuth listener for chat Claude
+  check                Run the green gate (format + lint + typecheck + build + test)
+  test                 Run the test suite
+  help                 Show this help
+EOF
+}
+
+cmd="${1:-help}"; shift || true
+case "$cmd" in
+  init)              exec bash "$SCRIPTS/init.sh" "$@" ;;
+  status)            exec bash "$SCRIPTS/init.sh" --status "$@" ;;
+  persona)           exec bash "$SCRIPTS/init.sh" --components persona "$@" ;;
+  setup)             exec bash "$SCRIPTS/setup.sh" "$@" ;;
+  mcp)               exec claude mcp add --transport http tars "http://127.0.0.1:${PORT:-8787}/mcp" ;;
+  start|stop|restart|logs) exec bash "$SCRIPTS/service.sh" "$cmd" ;;
+  install-service)   exec bash "$SCRIPTS/service.sh" install ;;
+  uninstall-service) exec bash "$SCRIPTS/service.sh" uninstall ;;
+  voice)             exec bash "$SCRIPTS/voice.sh" "${1:-status}" ;;
+  doctor)            exec bash "$SCRIPTS/doctor.sh" "$@" ;;
+  tunnel)            exec bash "$SCRIPTS/tunnel.sh" "$@" ;;
+  check)             exec bash -c "cd '$REPO_ROOT' && pnpm check" ;;
+  test)              exec bash -c "cd '$REPO_ROOT' && pnpm test" ;;
+  help|-h|--help)    usage ;;
+  *) printf 'Unknown command: %s\n\n' "$cmd" >&2; usage; exit 1 ;;
+esac

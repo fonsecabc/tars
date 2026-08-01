@@ -1,0 +1,82 @@
+name: tars-full
+
+# One-command LOCAL full stack (Linux): Postgres + Ollama (local embeddings) + the Tars
+# server, all on this machine, loopback-only. The server auto-runs migrations on boot, so
+# after `up` the no-auth MCP is live at http://127.0.0.1:8787/mcp — point Claude Code at it.
+#
+#   docker compose -f deploy/docker/docker-compose.full.yml up -d --build
+#   claude mcp add --transport http tars http://127.0.0.1:8787/mcp
+#
+# Why host networking for `tars`: the no-auth loopback listener is hard-bound to 127.0.0.1
+# INSIDE the process (main.ts) — publishing a port wouldn't reach it. `network_mode: host`
+# (Linux) puts that 127.0.0.1:8787 on YOUR loopback directly, and nowhere else.
+#
+# macOS: use `make setup` instead — Docker Desktop has no Linux host networking.
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: tars-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-tars}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tars_local_change_me}
+      POSTGRES_DB: ${POSTGRES_DB:-tars}
+    ports:
+      - '127.0.0.1:${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - tars_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-tars} -d ${POSTGRES_DB:-tars}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  ollama:
+    image: ollama/ollama:0.30.10
+    container_name: tars-ollama
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:11434:11434'
+    volumes:
+      - tars_ollama:/root/.ollama
+
+  # One-shot: wait for Ollama, then pull the embedding model the schema expects. `tars`
+  # waits for this to finish, so the first embedding never races a missing model.
+  ollama-pull:
+    image: ollama/ollama:0.30.10
+    depends_on: [ollama]
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint:
+      - /bin/sh
+      - -c
+      - 'until ollama list >/dev/null 2>&1; do echo "waiting for ollama..."; sleep 2; done; ollama pull nomic-embed-text'
+    restart: 'no'
+
+  tars:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    image: tars-server:local
+    container_name: tars-server
+    restart: unless-stopped
+    # Host networking so the process's hard-bound 127.0.0.1:8787 loopback lands on YOUR
+    # loopback. Reaches postgres/ollama via their published 127.0.0.1 ports below.
+    network_mode: host
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ollama-pull:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-tars}:${POSTGRES_PASSWORD:-tars_local_change_me}@127.0.0.1:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-tars}
+      PORT: '8787'
+      HOST: 127.0.0.1
+      EMBEDDING_PROVIDER: ollama
+      OLLAMA_BASE_URL: http://127.0.0.1:11434
+      OLLAMA_EMBEDDING_MODEL: nomic-embed-text
+
+volumes:
+  tars_pgdata:
+  tars_ollama:

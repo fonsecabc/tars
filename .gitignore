@@ -49,3 +49,14 @@ Thumbs.db
 
 # recall benchmark scorecards (generated)
 packages/core/src/eval/results/
+
+# LOCOMO benchmark data (fetched via download.sh) + generated scorecards — never committed
+packages/core/src/eval/locomo/data/
+packages/core/src/eval/locomo/results/
+
+# Personal finance harness — kept on the local-only branch local/finance, never on the public
+# tree. Belt-and-suspenders so a stray `git add -A` can't re-track it. (The voice stack is
+# public + customizable; only finance stays private.)
+/finance/
+/docs/finance/
+.claude/

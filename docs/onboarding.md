@@ -10,6 +10,18 @@ skip step 4 (the brain must have something in it before Dream/Briefing have anyt
 reconcile), and ask before taking any action outside this machine (registering a scheduled
 task, connecting a new OAuth connector) if you're not sure it's wanted yet.
 
+> **Shortcut (agent-driven):** `tars init` automates steps 1–3 below (server, MCP
+> registration, persona) non-interactively and returns a JSON summary — if you're Claude Code
+> doing this on someone's behalf, run it, parse the result, then pick up at step 4:
+>
+> ```bash
+> curl -fsSL https://raw.githubusercontent.com/fonsecabc/tars/main/install.sh | bash -s -- \
+>   --all --owner-name "<their name>" --install-prompt --yes --json
+> ```
+>
+> `tars init --status --json` reports current state; `--dry-run` previews without changing
+> anything. The manual sequence below is what it does under the hood.
+
 ## 1. Stand up the server
 
 ```bash

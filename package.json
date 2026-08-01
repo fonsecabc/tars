@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Personal memory MCP server (\"Second Brain\") — a single durable knowledge base exposed to Claude over the Model Context Protocol.",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "author": "Caio Fonseca",
   "repository": {
     "type": "git",
@@ -13,6 +13,9 @@
   "homepage": "https://github.com/fonsecabc/tars#readme",
   "bugs": {
     "url": "https://github.com/fonsecabc/tars/issues"
+  },
+  "bin": {
+    "tars": "bin/tars"
   },
   "keywords": [
     "mcp",
@@ -52,6 +55,7 @@
     "eslint-config-prettier": "^9",
     "prettier": "^3",
     "rimraf": "^6",
+    "tsx": "^4",
     "typescript": "^5",
     "typescript-eslint": "^8",
     "vitest": "^3"
