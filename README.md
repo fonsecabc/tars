@@ -17,13 +17,20 @@ multi-session conversations, 1,986 QA), run **fully locally** — a `qwen2.5:14b
 `qwen2.5:32b` LLM-judge, no cloud API — ingesting each turn as a verbatim, timestamped
 observation and answering from `memory_recall`.
 
-| Metric                                                     | Baseline   | + dated-context fix  |
-| ---------------------------------------------------------- | ---------- | -------------------- |
-| **Retrieval hit-rate** (gold evidence in recalled context) | **82.9 %** | **82.9 %**           |
-| Overall answer accuracy                                    | 48.4 %     | **54.6 %** (+6.1 pp) |
-| Temporal questions                                         | 4.0 %      | **27.1 %** (~7×)     |
-| Single-hop                                                 | 54.8 %     | 59.3 %               |
-| Adversarial (correctly abstains on traps)                  | 90.4 %     | **92.4 %**           |
+| Metric                                        | Baseline   | + dated-context fix  |
+| --------------------------------------------- | ---------- | -------------------- |
+| **Retrieval hit-rate** (answerable questions) | **82.9 %** | **82.9 %**           |
+| Overall answer accuracy (all 1,986)           | 48.4 %     | **54.6 %** (+6.1 pp) |
+| Temporal questions                            | 4.0 %      | **27.1 %** (~7×)     |
+| Single-hop                                    | 54.8 %     | 59.3 %               |
+| Adversarial (correctly abstains on traps)     | 90.4 %     | **92.4 %**           |
+
+**How retrieval hit-rate is defined:** the share of questions where the gold evidence turn
+appears verbatim in the context `memory_recall` assembled. It is measured over the **1,540
+answerable** questions and excludes LOCOMO's 446 category-5 adversarial questions, whose gold
+"evidence" is a deliberate distractor and where the correct behaviour is to abstain rather than
+retrieve. Across all 1,986 questions the same figure is 81.3 %. Answer accuracy is over all
+1,986.
 
 The wedge is **retrieval**: the right memory lands in context **82.9 %** of the time. The
 before/after shows the method working — we found the temporal answers were a date-_formatting_
