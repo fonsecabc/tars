@@ -2,7 +2,7 @@
   "name": "@tars/server",
   "version": "0.0.0",
   "private": true,
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

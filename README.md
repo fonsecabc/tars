@@ -10,6 +10,55 @@ The same memory is reachable and writable from **every Claude surface**: web
 It ships **empty and content-free**: a generic engine + schema, populated by the
 owner afterward. No names, no real data, no assumptions about whose life it is.
 
+## Benchmarks — does the memory actually work?
+
+Tars is measured on **[LOCOMO](https://github.com/snap-research/locomo)** (10 long
+multi-session conversations, 1,986 QA), run **fully locally** — a `qwen2.5:14b` answerer and a
+`qwen2.5:32b` LLM-judge, no cloud API — ingesting each turn as a verbatim, timestamped
+observation and answering from `memory_recall`.
+
+| Metric                                                     | Baseline   | + dated-context fix  |
+| ---------------------------------------------------------- | ---------- | -------------------- |
+| **Retrieval hit-rate** (gold evidence in recalled context) | **82.9 %** | **82.9 %**           |
+| Overall answer accuracy                                    | 48.4 %     | **54.6 %** (+6.1 pp) |
+| Temporal questions                                         | 4.0 %      | **27.1 %** (~7×)     |
+| Single-hop                                                 | 54.8 %     | 59.3 %               |
+| Adversarial (correctly abstains on traps)                  | 90.4 %     | **92.4 %**           |
+
+The wedge is **retrieval**: the right memory lands in context **82.9 %** of the time. The
+before/after shows the method working — we found the temporal answers were a date-_formatting_
+gap (the model had the fact, not the absolute date), surfaced bracketed dates, and temporal
+accuracy jumped ~7× while adversarial abstention held.
+
+**Honest caveats.** These are small **local** models (a laptop-grade 14B answerer, a local
+judge) — so treat the numbers as comparable **across Tars configurations**, not head-to-head
+with vendors' GPT-4-judged leaderboard scores. Bigger answerers lift the answer accuracy; the
+retrieval hit-rate is the model-independent signal.
+
+Reproduce it yourself (needs [Ollama](https://ollama.com) + the two models pulled):
+
+```bash
+bash  packages/core/src/eval/locomo/download.sh        # fetch the dataset (gitignored)
+pnpm tsx packages/core/src/eval/locomo/run-locomo.ts   # run; see that dir's README for knobs
+```
+
+### How Tars compares
+
+Tars is a **self-hosted, single-user personal memory graph** — a different target than the
+agent-framework and hosted-platform memory layers. Rough positioning (capabilities evolve —
+verify current state before relying on any cell):
+
+|                                         | **Tars**                  | mem0                   | Letta                  | Zep                        | basic-memory      |
+| --------------------------------------- | ------------------------- | ---------------------- | ---------------------- | -------------------------- | ----------------- |
+| Shape                                   | personal memory graph     | app/agent memory layer | agent runtime + memory | agent memory + temporal KG | local Markdown KB |
+| Store                                   | Postgres + pgvector       | pluggable vector DBs   | Postgres               | Postgres                   | Markdown files    |
+| Entities + observations + **relations** | ✅                        | partial                | agent state            | ✅ (temporal graph)        | links             |
+| Ingest                                  | **verbatim, timestamped** | LLM-summarized         | agent-curated          | LLM-extracted              | you write it      |
+| Runs with **no cloud LLM**              | ✅ (local Ollama)         | optional               | optional               | optional                   | ✅                |
+| **MCP-native** server                   | ✅                        | adapter                | adapter                | adapter                    | ✅                |
+| Published local benchmark               | ✅ (above, reproducible)  | —                      | —                      | —                          | —                 |
+| License                                 | PolyForm Internal-Use     | Apache-2.0             | Apache-2.0             | Apache-2.0                 | see project       |
+
 ## Status
 
 Built in phases (see [`DECISIONS.md`](DECISIONS.md)).
@@ -42,9 +91,35 @@ ops/
 **Design rule:** `core` and `mcp` know nothing about HTTP, OAuth, tunnels, or
 deployment. `server` is the only transport-aware package.
 
-## Install (macOS)
+## Install
 
-From a fresh clone to an always-on Tars in two commands:
+### Let your agent do it
+
+The setup driver is **agent-first**: hand this to Claude Code and it stands Tars up for you.
+One command clones the repo and runs `tars init`, which provisions any of four components —
+the **engine**, an **always-on service**, the **Claude Code MCP registration**, and a
+**personalized TARS persona** — and prints a JSON summary the agent reads to continue:
+
+```bash
+# agent-driven (headless, parseable): pick components, pass a name, get JSON back
+curl -fsSL https://raw.githubusercontent.com/fonsecabc/tars/main/install.sh | bash -s -- \
+  --all --owner-name "Ada" --install-prompt --yes --json
+```
+
+Everything is flag-driven and non-interactive, so nothing ever hangs on a prompt:
+
+```bash
+tars init --components engine,mcp,persona --owner-name "Ada" --yes --json
+tars init --status --json        # inspect current state
+tars init --all --dry-run --json # preview the plan, change nothing
+```
+
+Prefer to drive it yourself? Run `./install.sh` (or `make init` / `tars init`) with no flags
+and you get an interactive menu. It's idempotent — re-run any time to add a component.
+
+### Manual (macOS)
+
+Prefer to drive it yourself — from a fresh clone to an always-on Tars in two commands:
 
 ```bash
 git clone https://github.com/fonsecabc/tars.git && cd tars
@@ -88,6 +163,20 @@ login/reboot. Config/secrets come from the repo-root `.env` (gitignored).
 
 > The `make` flow above (Homebrew / Colima / launchd / Tailscale) is the **macOS
 > production deploy**. For development on any OS, use the platform-neutral path below.
+
+### Linux — one command (Docker)
+
+The whole stack — Postgres, local embeddings (Ollama), and the Tars server — in a single
+compose file. Nothing to install but Docker; the server auto-migrates on boot:
+
+```bash
+docker compose -f deploy/docker/docker-compose.full.yml up -d --build
+claude mcp add --transport http tars http://127.0.0.1:8787/mcp
+```
+
+That's it — the brain is live and empty, reachable by Claude Code on this machine. It uses
+host networking so the no-auth loopback listener stays bound to **your** `127.0.0.1` and
+nowhere else. (macOS: use `make setup` — Docker Desktop lacks Linux host networking.)
 
 ### Linux / development (any OS)
 
@@ -185,4 +274,7 @@ exactly what data lives where under each configuration.
 
 ## License
 
-[MIT](LICENSE) © Caio Fonseca
+[PolyForm Internal Use 1.0.0](LICENSE) © Caio Fonseca — free to use and modify for **personal
+and internal business** purposes; **not** for sale or redistribution (commercial and
+distribution rights are reserved). This is a source-available license, not an OSI "open
+source" one, by design.
