@@ -6,8 +6,8 @@
   <string>com.tars.cc-shadow</string>
   <key>ProgramArguments</key>
   <array>
-    <string>/opt/homebrew/bin/node</string>
-    <string>/Users/you/Projects/personal /tars/scripts/cc-shadow-tailer.mjs</string>
+    <string>/ABSOLUTE/PATH/TO/node/bin/node</string>
+    <string>/ABSOLUTE/PATH/TO/tars/scripts/cc-shadow-tailer.mjs</string>
   </array>
   <key>RunAtLoad</key>
   <true/>
@@ -16,8 +16,8 @@
   <key>ThrottleInterval</key>
   <integer>15</integer>
   <key>StandardOutPath</key>
-  <string>/Users/you/Library/Logs/tars-cc-shadow.out.log</string>
+  <string>/tmp/tars-cc-shadow.out.log</string>
   <key>StandardErrorPath</key>
-  <string>/Users/you/Library/Logs/tars-cc-shadow.err.log</string>
+  <string>/tmp/tars-cc-shadow.err.log</string>
 </dict>
 </plist>

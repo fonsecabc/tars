@@ -48,7 +48,7 @@ const SPEAK_STOP_URL = SPEAK_URL.replace('/speak', '/stop');
 
 // Barge-in: "stop"/"shut up" must cut TARS off INSTANTLY — no wake word, no gem, not even
 // gated by the SPEAKING flag (that flag exists to stop TARS hearing HIMSELF, not to stop
-// Caio interrupting him). Checked first, before every other gate. Zero-latency: hits
+// the user interrupting him). Checked first, before every other gate. Zero-latency: hits
 // tars-speak's /stop directly, clears any pending turn, nothing touches the model.
 const STOP_RE = /\b(stop|shut up|shush|quiet|be quiet|that's enough|zip it|silence)\b/i;
 function stopSpeaking(said) {
@@ -62,7 +62,7 @@ function stopSpeaking(said) {
 }
 
 // Wake detection. whisper mangles "TARS" a dozen ways ("Taurus", "Tarus", "Torres",
-// "Tara", "thars", "tears"…) and Caio has a pt-BR accent, so a fixed regex misses too
+// "Tara", "thars", "tears"…) and the user has a pt-BR accent, so a fixed regex misses too
 // much — and MISSING the wake word is why he felt ignored. So: a curated set of known
 // manglings + a Levenshtein fuzz on the first token. Returns the command with the wake
 // word stripped, or null. Deliberately generous: in wake-gated mode a rare false wake
@@ -165,7 +165,7 @@ async function forward(text, addressed) {
 // A long instruction gets chopped by whisper into several segments, and only the FIRST
 // carries the wake word, so continuations were dropped as "no wake" and TARS seemed to
 // stop listening mid-sentence. Fix: the wake word opens a TURN; every following segment
-// (no wake needed) is stitched on; when Caio pauses (adaptive window) or the turn hits
+// (no wake needed) is stitched on; when the user pauses (adaptive window) or the turn hits
 // TURN_MAX_MS, the whole thing is forwarded ONCE as one addressed command. Also subsumes
 // whisper's 2-3x re-emissions — stitch skips anything already in the buffer.
 const TURN_FAST_MS = Number(process.env.TARS_TURN_FAST_MS || 1100); // 1st segment: flush soon (short command)
@@ -228,7 +228,7 @@ function scheduleFlush() {
 }
 
 // The wake word "TARS" opens a listening turn; whatever follows (across several whisper
-// segments, no wake word needed) is stitched into one command and sent when Caio pauses.
+// segments, no wake word needed) is stitched into one command and sent when the user pauses.
 // Overheard chatter and mis-hears outside a turn are ignored, so they can't inject anything.
 function handleUtterance(text) {
   if (!flag(EARS_ON)) return; // master switch off

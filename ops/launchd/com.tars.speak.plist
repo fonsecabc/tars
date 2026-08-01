@@ -10,12 +10,12 @@
 
     <key>ProgramArguments</key>
     <array>
-        <string>/opt/homebrew/bin/node</string>
-        <string>/Users/you/Projects/personal /tars/voice/tars-speak.mjs</string>
+        <string>/ABSOLUTE/PATH/TO/node/bin/node</string>
+        <string>/ABSOLUTE/PATH/TO/tars/voice/tars-speak.mjs</string>
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/you/Projects/personal /tars/voice</string>
+    <string>/ABSOLUTE/PATH/TO/tars/voice</string>
 
     <key>EnvironmentVariables</key>
     <dict>
@@ -48,9 +48,9 @@
     <integer>10</integer>
 
     <key>StandardOutPath</key>
-    <string>/Users/you/Library/Logs/tars-speak.out.log</string>
+    <string>/tmp/tars-speak.out.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/you/Library/Logs/tars-speak.err.log</string>
+    <string>/tmp/tars-speak.err.log</string>
 </dict>
 </plist>

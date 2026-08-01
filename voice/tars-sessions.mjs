@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// tars-sessions — TARS's situational awareness of the Claude Code sessions Caio is
+// tars-sessions — TARS's situational awareness of the Claude Code sessions the user is
 // running. Reads the session transcripts under ~/.claude/projects (the same JSONL
 // files Claude Code writes) plus the live `claude` processes, and produces a compact
 // snapshot: which projects have work in flight, what each one is doing, how fresh it
@@ -254,7 +254,7 @@ function ago(ts) {
 
 // Fuzzy-match a spoken session name ("the finance one", "annotation") to a session by
 // its project label. Scores by how much of the label the query words cover; returns the
-// best hit or null. Deliberately loose — whisper mangles names and Caio speaks casually.
+// best hit or null. Deliberately loose — whisper mangles names and the user speaks casually.
 export function matchSession(sessions, query) {
   const q = String(query || '')
     .toLowerCase()
@@ -279,7 +279,7 @@ export function matchSession(sessions, query) {
 }
 
 // A short, speech-friendly rundown the gem can read or summarize. Includes both the last
-// thing Caio asked AND what the session last said back, plus its host (terminal/desktop),
+// thing the user asked AND what the session last said back, plus its host (terminal/desktop),
 // so the gem can answer "what am I working on" and "what's finance doing" without Claude.
 export function describeSessions(sessions) {
   if (!sessions.length) return 'No active sessions.';

@@ -14,11 +14,11 @@
          Privacy & Security › Accessibility. Rebuild via ops/launchd/tars-ears-app/build.sh. -->
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/you/Applications/TarsHands.app/Contents/MacOS/TarsHands</string>
+        <string>/ABSOLUTE/PATH/TO/HOME/Applications/TarsHands.app/Contents/MacOS/TarsHands</string>
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/you/Projects/personal /tars/voice</string>
+    <string>/ABSOLUTE/PATH/TO/tars/voice</string>
 
     <key>EnvironmentVariables</key>
     <dict>
@@ -40,9 +40,9 @@
     <integer>10</integer>
 
     <key>StandardOutPath</key>
-    <string>/Users/you/Library/Logs/tars-inject.out.log</string>
+    <string>/tmp/tars-inject.out.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/you/Library/Logs/tars-inject.err.log</string>
+    <string>/tmp/tars-inject.err.log</string>
 </dict>
 </plist>

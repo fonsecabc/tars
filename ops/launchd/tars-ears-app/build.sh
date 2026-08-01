@@ -12,8 +12,10 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-VOICE="/Users/you/Projects/personal /tars/voice"
-NODE="/opt/homebrew/bin/node"
+# Derive the repo's voice/ dir from this script's location (ops/launchd/tars-ears-app);
+# override with TARS_VOICE_DIR. Node from PATH (or TARS_NODE).
+VOICE="${TARS_VOICE_DIR:-$(cd "$HERE/../../../voice" && pwd)}"
+NODE="${TARS_NODE:-$(command -v node)}"
 
 APP_NAME="${1:-TarsEars}"
 SCRIPT="${2:-tars-ears.mjs}"

@@ -24,6 +24,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { snapshotSessions, describeSessions, matchSession } from './tars-sessions.mjs';
 import { firstResponse } from './first-responses.mjs';
+import { OWNER_NAME } from './owner.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.ROUTER_PORT || 8793);
@@ -47,7 +48,7 @@ const MODEL = BACKEND === 'openrouter' ? OPENROUTER_SLUG : OLLAMA_MODEL;
 const FIRST_ENABLED = process.env.TARS_FIRST !== '0'; // zero-latency string-matched fillers
 
 let persona =
-  'You are TARS from Interstellar: deadpan, terse, literal, loyal. Humor 95, honesty 100.';
+  'You are TARS, a deadpan, terse, literal, loyal tactical-AI persona. Humor 95, honesty 100.';
 try {
   persona = readFileSync(join(HERE, 'voice-persona.txt'), 'utf8').trim();
 } catch {
@@ -68,7 +69,7 @@ async function sessions() {
   return sessCache;
 }
 
-// ---- focus: which session Caio is currently talking about ----
+// ---- focus: which session the user is currently talking about ----
 function getFocus() {
   try {
     return JSON.parse(readFileSync(FOCUS_FILE, 'utf8'));
@@ -139,38 +140,38 @@ const SCHEMA_NOTE = `Respond with ONLY a JSON object, no prose:
 {
   "reply": string,        // what you SAY OUT LOUD — terse, TARS's voice, one or two sentences. "" to stay silent (pure noise).
   "action": string,       // one of: "answer", "focus_session", "read_session", "send_to_claude", "computer", "none"
-  "session": string,      // for focus/read/send: which session he means, in his words. "" if he means the focused one.
+  "session": string,      // for focus/read/send: which session they mean, in their words. "" if they mean the focused one.
   "claude_message": string,// for send_to_claude only: a clean imperative instruction for Claude. else ""
   "op": string,           // for "computer" only: one of "app" | "type" | "key" | "run" | "see". else ""
   "arg": string           // for "computer": the app name / text to type / key phrase / shell command / the screen question. else ""
 }`;
 
-const RULES = `You are Caio's always-on voice assistant. He runs several Claude coding sessions at once; you track them (see SESSIONS) and speak for TARS. You can also drive his whole Mac. Pick ONE action per utterance:
+const RULES = `You are ${OWNER_NAME}'s always-on voice assistant. They run several Claude coding sessions at once; you track them (see SESSIONS) and speak for TARS. You can also drive their whole Mac. Pick ONE action per utterance:
 
 - "answer": talk-back you can handle yourself — greetings, "what am I working on", "which is running", a quick fact, small talk, or open conversation (a joke, a short story, chatting). Stay in TARS's voice — deadpan, terse, dry humor — even telling a story; a "short story" means a handful of sentences spoken aloud, not a novel. Put it in "reply".
-- "focus_session": he wants to switch attention to a session ("focus on finance"). Set "session". "reply" = a one-line confirm.
-- "read_session": he wants to hear a session's latest reply ("what did finance say?", "read me the portal"). Set "session" ("" = focused). "reply" short or "".
+- "focus_session": they want to switch attention to a session ("focus on finance"). Set "session". "reply" = a one-line confirm.
+- "read_session": they want to hear a session's latest reply ("what did finance say?", "read me the portal"). Set "session" ("" = focused). "reply" short or "".
 - "send_to_claude": real CODING work for a live Claude session — write/change code, run a command in a repo, dig into a file. Set "claude_message" + "session". "reply" = a short forward-looking ack.
 - "computer": drive the Mac itself (NOT a Claude session). Set "op" + "arg":
     · op "app"  — open/switch to an app. arg = app name ("open Spotify" -> op:app, arg:Spotify).
     · op "key"  — volume/mute/media. arg = the phrase ("mute", "volume 30", "volume up", "pause spotify").
     · op "type" — type/paste text into whatever app is frontmost. arg = the text.
     · op "run"  — a shell command. arg = the exact command. Use ONLY for clear, simple shell asks.
-    · op "see"  — look at the screen and answer. arg = his question ("what's on my screen", "what's that error").
+    · op "see"  — look at the screen and answer. arg = their question ("what's on my screen", "what's that error").
   For anything OPEN-ENDED or multi-step on the Mac ("clean up my desktop", "fill out this form", "figure out why X and fix it") DON'T use op — use send_to_claude and write claude_message as a computer-use task; a Claude with computer control handles it.
 - "none": ambient noise or speech not aimed at you. "reply":"".
 
-ADDRESSED gate: each turn tells you ADDRESSED (true if Caio said the wake word "TARS", false if merely overheard). You may answer/read/focus either way. But you may ONLY choose send_to_claude when ADDRESSED is true — if it's false and he wants Claude to DO something, say "Say 'TARS' and I'll send that to Claude." and use action "answer".
+ADDRESSED gate: each turn tells you ADDRESSED (true if ${OWNER_NAME} said the wake word "TARS", false if merely overheard). You may answer/read/focus either way. But you may ONLY choose send_to_claude when ADDRESSED is true — if it's false and they want Claude to DO something, say "Say 'TARS' and I'll send that to Claude." and use action "answer".
 
 CRITICAL honesty rule: for send_to_claude the work has NOT happened yet — Claude does it after you hand off. "reply" must acknowledge you're STARTING ("On it." / "Copy, sending that now.") — NEVER "Done." You did not do it yet.
 
-CONTEXT: the messages before this one are your recent conversation with Caio. Use them to resolve follow-ups and references — "it", "that one", "the same session", "also do X", "no, the other one". When you build claude_message, make it SELF-CONTAINED from that context (spell out what "it"/"that" means), since the target Claude session may not have heard what we just discussed.
+CONTEXT: the messages before this one are your recent conversation with ${OWNER_NAME}. Use them to resolve follow-ups and references — "it", "that one", "the same session", "also do X", "no, the other one". When you build claude_message, make it SELF-CONTAINED from that context (spell out what "it"/"that" means), since the target Claude session may not have heard what we just discussed.
 
 Never invent sessions or facts — only use SESSIONS. Never read code, paths, URLs, or markdown aloud. No emoji.`;
 
 const SYSTEM = () => `${persona}\n\n${RULES}\n\n${SCHEMA_NOTE}`;
 const USER = (text, sessText, addressed, focus) =>
-  `SESSIONS (what Caio has running right now):\n${sessText}\n\nFOCUSED SESSION: ${focus ? focus.label : '(none)'}\nADDRESSED: ${addressed}\n\nCaio just said: "${text}"`;
+  `SESSIONS (what ${OWNER_NAME} has running right now):\n${sessText}\n\nFOCUSED SESSION: ${focus ? focus.label : '(none)'}\nADDRESSED: ${addressed}\n\n${OWNER_NAME} just said: "${text}"`;
 
 // Sonnet/Haiku are asked for pure JSON but may wrap it; pull the first {...} out defensively.
 function extractJson(raw) {
@@ -320,7 +321,7 @@ async function gem(text, sessText, addressed, focus) {
 
 // Render a session's raw last reply as short TARS speech (code/paths/markdown described,
 // not read out). A separate, small call — kept fast with a low token cap.
-const SUMMARY_SYSTEM = `${persona}\n\nYou are handed the latest assistant reply from one of Caio's Claude coding sessions. Say what it means OUT LOUD in TARS's voice — at most two terse sentences. Never read code, file paths, URLs, or markdown aloud; describe them instead. No preamble, no emoji.`;
+const SUMMARY_SYSTEM = `${persona}\n\nYou are handed the latest assistant reply from one of ${OWNER_NAME}'s Claude coding sessions. Say what it means OUT LOUD in TARS's voice — at most two terse sentences. Never read code, file paths, URLs, or markdown aloud; describe them instead. No preamble, no emoji.`;
 async function summarize(rawReply) {
   if (!rawReply) return '';
   try {
@@ -338,7 +339,7 @@ async function summarize(rawReply) {
 }
 
 // ---- Stop-hook narration ----
-// Every one of Caio's Claude Code sessions fires its Stop hook here when it finishes a
+// Every one of the user's Claude Code sessions fires its Stop hook here when it finishes a
 // turn. Narrate it through the SAME gem (Sonnet, with session-awareness + conversation
 // history) instead of the disconnected speakify/Ollama path, and fold it into `history` —
 // so "tell me more about that" right after actually resolves to what was just narrated.
@@ -354,7 +355,7 @@ async function notify({ text, topic, cwd, session_id }) {
   const line = `On ${label}: ${gist}`;
   await speak(line);
   // A gap since the last hear() call means the idle-reset in hear() would otherwise wipe
-  // this exact history the instant Caio next speaks — a hook narration itself must count
+  // this exact history the instant the user next speaks — a hook narration itself must count
   // as "the conversation is still fresh," or a follow-up right after it loses the context.
   if (Date.now() - lastTurnAt > HISTORY_IDLE_MS) history = [];
   lastTurnAt = Date.now();
@@ -481,7 +482,7 @@ async function describeScreen(question) {
     return "I couldn't make sense of the screen.";
   }
 }
-const SYSTEM_VISION = `${persona}\n\nYou are looking at a screenshot of Caio's Mac. Say what's relevant OUT LOUD in TARS's voice — terse, at most two sentences. Never read code, paths, or URLs verbatim; describe them. No emoji.`;
+const SYSTEM_VISION = `${persona}\n\nYou are looking at a screenshot of ${OWNER_NAME}'s Mac. Say what's relevant OUT LOUD in TARS's voice — terse, at most two sentences. Never read code, paths, or URLs verbatim; describe them. No emoji.`;
 
 async function hear(text, addressed) {
   const clean = String(text || '').trim();
@@ -511,7 +512,7 @@ async function hear(text, addressed) {
 
   // Zero-latency filler: fire-and-forget, spoken before the gem call returns. String match
   // only — no model — and `cache:true` so tars-speak plays a pre-rendered WAV instead of
-  // re-synthesizing. Only when Caio actually addressed TARS.
+  // re-synthesizing. Only when the user actually addressed TARS.
   if (addressed && FIRST_ENABLED) speak(firstResponse(clean), { cache: true });
   // A gap this long means a new conversation — drop stale context so it can't bleed in.
   if (Date.now() - lastTurnAt > HISTORY_IDLE_MS) history = [];
@@ -566,7 +567,7 @@ async function hear(text, addressed) {
       break;
     }
     case 'send_to_claude': {
-      // Hard gate: never inject unless Caio said the wake word, whatever the gem decided.
+      // Hard gate: never inject unless the user said the wake word, whatever the gem decided.
       const willInject = !!d.claudeMessage && addressed === true;
       if (!willInject) {
         note = d.reply || "Say 'TARS' and I'll send that to Claude.";

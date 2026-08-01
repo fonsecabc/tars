@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-// tars-speak-hook — Claude Code `Stop` hook. Fires when ANY of Caio's Claude Code
+// tars-speak-hook — Claude Code `Stop` hook. Fires when ANY of the user's Claude Code
 // sessions finishes a turn. Reads the transcript, extracts the final user-facing
 // assistant text, and hands it to the ROUTER's /notify — the same Sonnet session
 // that has session-awareness, focus, and conversation history — not straight to
 // tars-speak's dumb speakify (gemma2:9b via Ollama), which had no idea what TARS
 // had just been asked and couldn't take a follow-up question about it. Routing
-// through /notify means Caio can say "tell me more about that" right after and
+// through /notify means the user can say "tell me more about that" right after and
 // the gem resolves "that" from history, same as anything else he says to TARS.
 // Fire-and-forget: the router ACKs immediately and narrates in the background, so
 // this never blocks Claude waiting on a live model call.
@@ -49,9 +49,9 @@ function readTail(path, maxBytes = 262144) {
 }
 
 // A short, speech-friendly name for which project/session this reply belongs to, so
-// tars-speak can remind Caio what it's talking about. From cwd: drop the worktree
+// tars-speak can remind the user what it's talking about. From cwd: drop the worktree
 // path, take the repo folder, and turn dashes/underscores into spaces.
-//   /Users/.../Projects/taste/component-annotation/.claude/worktrees/x -> "component annotation"
+//   /path/to/Projects/my-app/some-feature/.claude/worktrees/x -> "some feature"
 function topicFromCwd(cwd) {
   if (!cwd) return '';
   const base = String(cwd).split('/.claude/worktrees/')[0];

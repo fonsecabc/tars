@@ -14,6 +14,7 @@ import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { speakify } from './speakify.mjs';
 import { applyLexicon } from './lexicon.mjs';
+import { OWNER_NAME, OWNER_PHONETIC } from './owner.mjs';
 
 const execFileP = promisify(execFile);
 
@@ -22,8 +23,8 @@ const VOICE = process.env.TARS_VOICE_NAME || ''; // '' => system default voice
 const RATE = process.env.TARS_VOICE_RATE || ''; // '' => default rate; else wpm
 const QUEUE_MAX = Number(process.env.SPEAK_QUEUE_MAX || 20);
 const DEDUPE_MS = Number(process.env.SPEAK_DEDUPE_MS || 10 * 60 * 1000);
-// Remind Caio which session is talking. With many parallel sessions all speaking
-// through one voice, a bare reply leaves him guessing. So we lead with the topic
+// Remind the user which session is talking. With many parallel sessions all speaking
+// through one voice, a bare reply leaves the user guessing. So we lead with the topic
 // ("On tars: …") whenever it CHANGES from the last thing spoken, or after a pause
 // long enough that the context has faded. TARS_TOPIC_ALWAYS=1 prepends it every time;
 // TARS_TOPIC=0 disables it entirely.
@@ -60,7 +61,7 @@ const log = (...a) => console.log(new Date().toISOString(), ...a);
 const isMuted = () => existsSync(MUTED_FLAG);
 
 // The ears daemon watches this flag and drops anything the mic hears while it's set,
-// so TARS never transcribes his own voice off the speakers. Set for the whole speaking
+// so TARS never transcribes its own voice off the speakers. Set for the whole speaking
 // burst, cleared when the queue drains.
 // whisper (the ears) only emits the transcript of TARS's speech ~1-2s AFTER the audio
 // stops — its VAD waits for a pause first. If we clear the flag the instant playback ends,
@@ -95,7 +96,10 @@ function setSpeaking(on) {
 // Phonetic respelling for names Kokoro's English G2P would otherwise mispronounce.
 // Applied ONLY to what's actually sent to the speech backend — never to logs, the
 // /speak response body, or dedupe hashing, which all stay on the real spelling.
-const PRONOUNCE = [[/\bcaio\b/gi, 'Kyle']];
+const PRONOUNCE =
+  OWNER_NAME !== 'the user' && OWNER_PHONETIC
+    ? [[new RegExp(`\\b${OWNER_NAME}\\b`, 'gi'), OWNER_PHONETIC]]
+    : [];
 function toSpeechText(text) {
   let out = text;
   for (const [re, sub] of PRONOUNCE) out = out.replace(re, sub);
@@ -422,7 +426,7 @@ const server = http.createServer(async (req, res) => {
     let speech = body.raw ? String(text).trim() : await speakify(String(text));
     if (!speech) return json(res, 200, { dropped: 'skip' });
     speech = applyLexicon(speech); // pronunciation fixes, applied last so they survive speakify
-    speech = withTopic(speech, body.topic); // lead with which session is talking, so Caio isn't lost
+    speech = withTopic(speech, body.topic); // lead with which session is talking, so the user isn't lost
     // render mode: bake this phrase into the WAV cache and return, without playing (pre-warm).
     if (body.render) {
       const r = await backend.render(toSpeechText(speech));

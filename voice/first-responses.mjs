@@ -1,6 +1,6 @@
 // tars first-responses — the fixed, zero-latency filler lines spoken the instant a command
 // arrives, while the cloud gem computes the real answer. Pure string match, NO model.
-// Buckets built from Caio's actual command logs; ordered most-specific first. Shared by the
+// Buckets built from the user's actual command logs; ordered most-specific first. Shared by the
 // router (to choose one) and the pre-render step (to bake each into a cached WAV once, so
 // playback is a file read, not a synth). Keep the phrase strings STABLE — changing a string
 // orphans its cached WAV until re-rendered.

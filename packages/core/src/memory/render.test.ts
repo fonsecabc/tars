@@ -75,12 +75,12 @@ describe('renderRecallCompact', () => {
       query: 'maria',
       entities: [
         recalled(entity('e1', 'person', 'Maria'), []),
-        recalled(entity('e2', 'person', 'Caio'), []),
+        recalled(entity('e2', 'person', 'Alex'), []),
       ],
       relations: [relation('r1', 'e1', 'e2', 'manages')],
     };
     const text = renderRecallCompact(result, { maxChars: 1000 });
-    expect(text).toContain('Maria —manages→ Caio');
+    expect(text).toContain('Maria —manages→ Alex');
     expect(text).not.toContain('e1');
     expect(text).not.toContain('r1');
   });

@@ -8,17 +8,17 @@
 
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/you/.tars/tts-venv/bin/python</string>
-        <string>/Users/you/Projects/personal /tars/voice/tars-tts-kokoro.py</string>
+        <string>/ABSOLUTE/PATH/TO/HOME/.tars/tts-venv/bin/python</string>
+        <string>/ABSOLUTE/PATH/TO/tars/voice/tars-tts-kokoro.py</string>
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/you/Projects/personal /tars/voice</string>
+    <string>/ABSOLUTE/PATH/TO/tars/voice</string>
 
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
-        <string>/Users/you/.tars/tts-venv/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <string>/ABSOLUTE/PATH/TO/HOME/.tars/tts-venv/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
         <key>KOKORO_PORT</key>
         <string>8791</string>
         <key>KOKORO_VOICE</key>
@@ -37,9 +37,9 @@
     <integer>10</integer>
 
     <key>StandardOutPath</key>
-    <string>/Users/you/Library/Logs/tars-tts-kokoro.out.log</string>
+    <string>/tmp/tars-tts-kokoro.out.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/you/Library/Logs/tars-tts-kokoro.err.log</string>
+    <string>/tmp/tars-tts-kokoro.err.log</string>
 </dict>
 </plist>

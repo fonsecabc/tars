@@ -17,11 +17,11 @@
          Rebuild the bundle with ops/launchd/tars-ears-app/build.sh. -->
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/you/Applications/TarsEars.app/Contents/MacOS/TarsEars</string>
+        <string>/ABSOLUTE/PATH/TO/HOME/Applications/TarsEars.app/Contents/MacOS/TarsEars</string>
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/you/Projects/personal /tars/voice</string>
+    <string>/ABSOLUTE/PATH/TO/tars/voice</string>
 
     <key>EnvironmentVariables</key>
     <dict>
@@ -29,13 +29,13 @@
         <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
         <key>ROUTER_URL</key>
         <string>http://127.0.0.1:8793/hear</string>
-        <!-- Multilingual large-v3-turbo (q5): far better on Caio's accented English than the
+        <!-- Multilingual large-v3-turbo (q5): far better on non-native (accented) English than the
              English-only small.en, and handles Portuguese too. Fast on the M5 Pro's Metal.
-             Set TARS_WHISPER_LANG=auto (or pt) in this dict if he speaks Portuguese to TARS. -->
+             Set TARS_WHISPER_LANG=auto (or pt) in this dict if you speak Portuguese to TARS. -->
         <key>TARS_WHISPER_MODEL</key>
-        <string>/Users/you/.tars/models/ggml-large-v3-turbo-q5_0.bin</string>
+        <string>/ABSOLUTE/PATH/TO/HOME/.tars/models/ggml-large-v3-turbo-q5_0.bin</string>
         <!-- Pin the real built-in mic. Index shifts if the device list changes (e.g. the
-             old virtual "Caio Fonseca Microphone" loopback device disappeared, so the real
+             an old virtual loopback mic device disappeared, so the real
              "MacBook Pro Microphone" moved from index 1 to index 0) — if the mic ever goes
              silent again, check `whisper-stream` stderr for "Capture device #N" and re-pin. -->
         <key>TARS_CAPTURE_ID</key>
@@ -56,9 +56,9 @@
     <integer>10</integer>
 
     <key>StandardOutPath</key>
-    <string>/Users/you/Library/Logs/tars-ears.out.log</string>
+    <string>/tmp/tars-ears.out.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/you/Library/Logs/tars-ears.err.log</string>
+    <string>/tmp/tars-ears.err.log</string>
 </dict>
 </plist>

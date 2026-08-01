@@ -180,7 +180,7 @@ every platform rather than replacing them.
 ## Relationship to existing skills
 
 `taste-slack-voice` and `whatsapp-voice` (Claude Code skills, not part of this repo) are the
-hand-written precursors to this pattern — they encode Caio's Slack/WhatsApp voice as static
+hand-written precursors to this pattern — they encode the maintainer's Slack/WhatsApp voice as static
 prose with pre-decided modes. This routine supersedes the _source of truth_ for that content:
 the traits should live in `Voice:Slack` / `Voice:WhatsApp` brain entities, re-derivable and
 correctable, rather than only in a skill file someone has to remember to update by hand. The

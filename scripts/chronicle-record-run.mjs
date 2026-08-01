@@ -2,7 +2,7 @@
 // Record one scheduled-routine run into Chronicle (origin 'cron', one session per routine
 // name, each run = started/summary/completed turns). One-liner for routine specs:
 //
-//   node "/Users/you/Projects/personal /tars/scripts/chronicle-record-run.mjs" \
+//   node "$TARS_REPO/scripts/chronicle-record-run.mjs" \
 //     <taskName> <ok|error|skipped> "<one-paragraph summary>"
 //
 // Exit code is ALWAYS 0 — recording is best-effort and must never fail a routine.

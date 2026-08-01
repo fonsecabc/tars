@@ -22,7 +22,7 @@
 #define TARS_NODE "/opt/homebrew/bin/node"
 #endif
 #ifndef TARS_SCRIPT
-#define TARS_SCRIPT "/Users/you/Projects/personal /tars/voice/tars-ears.mjs"
+#define TARS_SCRIPT "/ABSOLUTE/PATH/TO/tars/voice/tars-ears.mjs"
 #endif
 
 extern char **environ;
