@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "description": "Personal memory MCP server (\"Second Brain\") — a single durable knowledge base exposed to Claude over the Model Context Protocol.",
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "MIT",
   "author": "Caio Fonseca",
   "repository": {
     "type": "git",
@@ -51,6 +51,8 @@
   "devDependencies": {
     "@eslint/js": "^9",
     "@types/node": "^24",
+    "@vitest/coverage-istanbul": "^3.2.7",
+    "@vitest/coverage-v8": "^3.2.7",
     "eslint": "^9",
     "eslint-config-prettier": "^9",
     "prettier": "^3",

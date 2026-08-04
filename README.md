@@ -64,7 +64,7 @@ verify current state before relying on any cell):
 | Runs with **no cloud LLM**              | ✅ (local Ollama)         | optional               | optional               | optional                   | ✅                |
 | **MCP-native** server                   | ✅                        | adapter                | adapter                | adapter                    | ✅                |
 | Published local benchmark               | ✅ (above, reproducible)  | —                      | —                      | —                          | —                 |
-| License                                 | Elastic License 2.0       | Apache-2.0             | Apache-2.0             | Apache-2.0                 | see project       |
+| License                                 | MIT                       | Apache-2.0             | Apache-2.0             | Apache-2.0                 | see project       |
 
 ## Status
 
@@ -291,7 +291,4 @@ exactly what data lives where under each configuration.
 
 ## License
 
-[Elastic License 2.0](LICENSE) © Caio Fonseca — use it, modify it, run it at work, fork it and
-contribute back. You may **not** resell it as a hosted or managed service; commercial rights
-are reserved (ask for a commercial license). Source-available, not an OSI "open source"
-license, by design.
+[MIT](LICENSE) © Caio Fonseca. Use it, change it, ship it — no strings.
