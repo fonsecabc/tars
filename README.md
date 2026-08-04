@@ -1,5 +1,9 @@
 # Tars — Personal Memory MCP Server ("Second Brain")
 
+[![Stars](https://img.shields.io/github/stars/fonsecabc/tars?style=flat&logo=github&label=stars&color=black)](https://github.com/fonsecabc/tars/stargazers)
+[![License: MIT](https://img.shields.io/badge/license-MIT-black)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/fonsecabc/tars?style=flat&color=black)](https://github.com/fonsecabc/tars/releases/latest)
+
 A self-hosted, single-user **memory server**: one durable knowledge base about a
 person's life — people, work, projects, trips, places, events, preferences, facts —
 exposed to Claude over the **Model Context Protocol (MCP)**.
@@ -289,6 +293,16 @@ exactly what data lives where under each configuration.
 - [`PRIVACY.md`](PRIVACY.md) — data handling and privacy posture.
 - [`SECURITY.md`](SECURITY.md) — security model & vulnerability reporting.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — dev setup & how to contribute.
+
+## Stars
+
+<a href="https://star-history.com/#fonsecabc/tars&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=fonsecabc/tars&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=fonsecabc/tars&type=Date" />
+    <img alt="Star history for fonsecabc/tars" src="https://api.star-history.com/svg?repos=fonsecabc/tars&type=Date" />
+  </picture>
+</a>
 
 ## License
 
