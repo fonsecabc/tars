@@ -118,7 +118,12 @@ describe('sessions/store/leases — claimLease', () => {
     expect(claimed?.holder).toBe('cron:briefing');
     expect(claimed?.harness).toBe('cron');
     expect(claimed?.epoch).toBe('2');
-    expect(claimed?.acquiredAt.getTime()).toBeGreaterThan(stale?.acquiredAt.getTime() ?? Infinity);
+    // acquiredAt is reset to the claim time. Both claims can land in the SAME millisecond on a
+    // fast machine, so assert not-earlier (>=) rather than strictly-later — the epoch bump above
+    // is what proves the re-claim actually happened.
+    expect(claimed?.acquiredAt.getTime()).toBeGreaterThanOrEqual(
+      stale?.acquiredAt.getTime() ?? Infinity,
+    );
   });
 });
 

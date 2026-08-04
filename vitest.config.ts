@@ -33,5 +33,21 @@ export default defineConfig({
         inline: true,
       },
     },
+    coverage: {
+      provider: 'istanbul',
+      reporter: ['text-summary', 'json-summary', 'html'],
+      reportsDirectory: './coverage',
+      include: ['packages/*/src/**/*.ts'],
+      // Excluded from the ratio (not product logic, or not exercisable in unit tests):
+      exclude: [
+        '**/*.test.ts',
+        '**/index.ts', // barrel re-exports
+        '**/test-helpers/**',
+        '**/eval/**', // benchmark harnesses (LOCOMO/recall) — run manually, need models
+        '**/migrations/**',
+        'packages/server/src/main.ts', // process entrypoint (binds ports, starts listeners)
+        'packages/server/src/migrate.ts', // thin CLI wrapper around runMigrations
+      ],
+    },
   },
 });
