@@ -41,6 +41,7 @@ deploy/docker    Postgres + pgvector compose
 deploy/tunnel    Tailscale Funnel (default) / Cloudflare (alternative)
 ops/launchd      24/7 process management on the Mac
 ops/backup       pg_dump schedule + git mirror
+skills/          agent skills shipped with Tars (Markdown + frontmatter, no code)
 ```
 
 ## Commands

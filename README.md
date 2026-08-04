@@ -286,6 +286,8 @@ exactly what data lives where under each configuration.
 - [`docs/mcps.md`](docs/mcps.md) — MCP companions (WhatsApp, Slack, Gmail, Calendar, Granola, Linear, …).
 - [`docs/tars-system-prompt.md`](docs/tars-system-prompt.md) — the TARS persona + memory prompt, and how to wire it in.
 - [`docs/routines/`](docs/routines/) — Bootstrap (one-time seed), Dream (nightly), Briefing (morning).
+- [`skills/`](skills/) — agent skills Tars ships, starting with [`handoff`](skills/handoff/SKILL.md)
+  for carrying work across a session reset, worktree, or subagent boundary.
 - [`CLAUDE.md`](CLAUDE.md) — working guide & conventions for this repo.
 - [`docs/routines/voice-personas.md`](docs/routines/voice-personas.md) — learn how the user
   writes per platform (Slack, email, WhatsApp, LinkedIn, Twitter/X…) and draft in their voice.
