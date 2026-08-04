@@ -277,6 +277,7 @@ exactly what data lives where under each configuration.
 
 ## Docs
 
+- [`docs/how-tars-works.md`](docs/how-tars-works.md) — why this exists, how recall and Dream work, and what the LOCOMO numbers mean.
 - [`docs/onboarding.md`](docs/onboarding.md) — Day-0 runbook: server → MCPs → persona → seed → routines.
 - [`docs/mcps.md`](docs/mcps.md) — MCP companions (WhatsApp, Slack, Gmail, Calendar, Granola, Linear, …).
 - [`docs/tars-system-prompt.md`](docs/tars-system-prompt.md) — the TARS persona + memory prompt, and how to wire it in.
