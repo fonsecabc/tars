@@ -24,14 +24,34 @@ die()  { err "$*"; exit 1; }
 
 # --- OS detection -----------------------------------------------------------
 is_macos() { [[ "$(uname -s)" == "Darwin" ]]; }
+is_linux() { [[ "$(uname -s)" == "Linux" ]]; }
 
-# Bail early on non-macOS with a pointer to the manual path. Linux support is
-# intentionally out of scope for these scripts (Colima/launchd/brew assumed).
+# service_manager — which init system supervises Tars's always-on service here.
+#   "launchd"     macOS.
+#   "systemd"     Linux with a reachable per-user systemd instance (the common case;
+#                 needs a user D-Bus session — SSH-only logins may need lingering, see
+#                 ops/systemd/README.md).
+#   "unsupported" anything else — service.sh/doctor.sh degrade with a clear pointer.
+# Printed to stdout alone; callers do `mgr="$(service_manager)"`.
+service_manager() {
+  if is_macos; then
+    echo launchd
+  elif is_linux && have systemctl && systemctl --user show-environment >/dev/null 2>&1; then
+    echo systemd
+  else
+    echo unsupported
+  fi
+}
+
+# Bail early where a script genuinely needs macOS. Provisioning (Homebrew + Colima)
+# is still Mac-only; the always-on SERVICE, however, runs on Linux too — so point
+# Linux users at what IS supported instead of a dead end.
 require_macos() {
   if ! is_macos; then
-    err "These scripts target macOS (Homebrew + Colima + launchd)."
-    err "On Linux: install Docker + Node 20+ + Ollama natively, run 'pnpm install &&"
-    err "pnpm build && pnpm db:up', and supervise 'pnpm start' with systemd instead."
+    err "'make setup' provisions via Homebrew + Colima, which target macOS."
+    err "On Linux: install Docker + Node 20+ (+ Ollama for the Full profile) natively,"
+    err "then 'pnpm install && pnpm build && pnpm db:up'. The always-on service is"
+    err "supported — run 'make install-service' (systemd). See ops/systemd/README.md."
     exit 1
   fi
 }
@@ -220,11 +240,23 @@ wait_for_postgres() {
   nc -z 127.0.0.1 5432 >/dev/null 2>&1
 }
 
-# --- launchd ----------------------------------------------------------------
+# --- launchd (macOS) --------------------------------------------------------
 LAUNCHD_LABEL="com.tars.server"
 LAUNCHD_PLIST="$HOME/Library/LaunchAgents/${LAUNCHD_LABEL}.plist"
 launchd_target() { echo "gui/$(id -u)/${LAUNCHD_LABEL}"; }
 launchd_loaded() { launchctl print "$(launchd_target)" >/dev/null 2>&1; }
+
+# --- systemd (Linux, per-user) ----------------------------------------------
+# The launchd analogues for a per-user unit. We use --user (not a system unit) to match
+# launchd's per-user GUI agent: no root needed, config/secrets stay under $HOME. Boot/
+# logout persistence comes from lingering (enabled at install), not from a system unit.
+SYSTEMD_UNIT="tars-server.service"
+SYSTEMD_USER_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
+SYSTEMD_UNIT_PATH="$SYSTEMD_USER_DIR/$SYSTEMD_UNIT"
+systemd_installed() { [[ -f "$SYSTEMD_UNIT_PATH" ]]; }
+systemd_active()    { systemctl --user is-active --quiet "$SYSTEMD_UNIT"; }
+# "loaded" ≈ launchd_loaded: known to the manager — enabled at boot or running now.
+systemd_loaded()    { systemctl --user is-enabled --quiet "$SYSTEMD_UNIT" 2>/dev/null || systemd_active; }
 
 # --- Server health ----------------------------------------------------------
 # The loopback MCP endpoint answers 400 to a bare GET (no MCP session) when up.

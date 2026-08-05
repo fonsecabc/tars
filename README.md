@@ -211,8 +211,13 @@ pnpm db:up          # start Postgres (pgvector) in Docker
 pnpm build
 pnpm db:migrate     # apply migrations (core schema + OAuth tables)
 pnpm test           # full suite (real-Postgres integration tests)
-pnpm start          # run the server (supervise with systemd for always-on)
+pnpm start          # run the server once (foreground)
 ```
+
+For an **always-on** server on Linux, `make install-service` installs a **systemd**
+`--user` unit (auto-restart, boot persistence via lingering) — the launchd equivalent, same
+make targets (`start` / `stop` / `restart` / `logs` / `uninstall-service`). See
+[`ops/systemd/`](ops/systemd/README.md).
 
 Then connect Claude Code to the loopback listener:
 

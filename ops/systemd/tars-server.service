@@ -1,0 +1,32 @@
+# Keep the Tars server running 24/7 with auto-restart — the systemd (Linux) analogue of
+# ops/launchd/com.tars.server.plist. TEMPLATE: 'make install-service' fills in the
+# /ABSOLUTE/PATH/TO/tars paths and /ABSOLUTE/PATH/TO/node/bin (from 'which node') and
+# installs it to ~/.config/systemd/user — don't hand-install it. The unit runs
+# tars-server-run.sh, which brings up Postgres (docker compose) in order and then execs
+# the server, so the whole stack comes back on login/boot (with lingering enabled).
+# Config/secrets come from <repo>/.env (dotenv reads it from WorkingDirectory).
+[Unit]
+Description=Tars — self-hosted second brain (always-on server)
+Documentation=https://github.com/fonsecabc/tars
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/ABSOLUTE/PATH/TO/tars
+ExecStart=/bin/bash /ABSOLUTE/PATH/TO/tars/ops/systemd/tars-server-run.sh
+# The server uses Ollama for embeddings on the Full profile; harmless when the .env sets
+# EMBEDDING_PROVIDER=null (Simple profile), which overrides this at runtime.
+Environment=EMBEDDING_PROVIDER=ollama
+# systemd does NOT inherit your shell PATH (nvm/corepack node lives there) — lead with
+# node's bin dir, filled from 'which node' at install time.
+Environment=PATH=/ABSOLUTE/PATH/TO/node/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+Restart=always
+RestartSec=10
+# Logs go to the journal: 'journalctl --user -u tars-server -f' (or 'make logs').
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tars-server
+
+[Install]
+WantedBy=default.target
