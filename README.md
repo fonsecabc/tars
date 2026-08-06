@@ -300,6 +300,15 @@ exactly what data lives where under each configuration.
 
 <img width="3664" height="2808" alt="star-history-202686" src="https://github.com/user-attachments/assets/99ee27d7-0ae9-4f82-afc3-ab49f091729a" />
 
+## Contributors
+
+<a href="https://github.com/fonsecabc/tars/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=fonsecabc/tars" alt="Contributors to Tars" />
+</a>
+
+Faces fill in as pull requests land. Want yours here? Start with
+[`CONTRIBUTING.md`](CONTRIBUTING.md).
+
 ## License
 
 [MIT](LICENSE) © Caio Fonseca. Use it, change it, ship it — no strings.
