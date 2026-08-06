@@ -15,6 +15,9 @@ export default tseslint.config(
       // rationale as server/scripts above.
       'voice/**',
       'scripts/**',
+      // Helper scripts bundled with a skill: standalone Node run by the agent, not library
+      // code, same rationale as scripts/ above.
+      'skills/**/scripts/**',
       // Other sessions' git worktrees and Python venvs live inside the checkout — never lint
       // them from the primary working tree.
       '.claude/**',
