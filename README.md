@@ -302,12 +302,13 @@ exactly what data lives where under each configuration.
 
 ## Contributors
 
-<a href="https://github.com/fonsecabc/tars/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=fonsecabc/tars" alt="Contributors to Tars" />
+<a href="https://github.com/fonsecabc">
+  <img src="https://avatars.githubusercontent.com/u/84057597?v=4&s=80" width="80" height="80" alt="fonsecabc" />
 </a>
 
-Faces fill in as pull requests land. Want yours here? Start with
-[`CONTRIBUTING.md`](CONTRIBUTING.md).
+Built by [@fonsecabc](https://github.com/fonsecabc). Full history in the
+[contributors graph](https://github.com/fonsecabc/tars/graphs/contributors). Want your face
+here? Start with [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## License
 
