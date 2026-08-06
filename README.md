@@ -298,13 +298,7 @@ exactly what data lives where under each configuration.
 
 ## Stars
 
-<a href="https://star-history.com/#fonsecabc/tars&Date">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=fonsecabc/tars&type=Date&theme=dark" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=fonsecabc/tars&type=Date" />
-    <img alt="Star history for fonsecabc/tars" src="https://api.star-history.com/svg?repos=fonsecabc/tars&type=Date" />
-  </picture>
-</a>
+<img width="3664" height="2808" alt="star-history-202686" src="https://github.com/user-attachments/assets/99ee27d7-0ae9-4f82-afc3-ab49f091729a" />
 
 ## License
 
