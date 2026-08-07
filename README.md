@@ -273,6 +273,48 @@ Slack, Granola, Linear): [`docs/mcps.md`](docs/mcps.md). All optional — Tars w
 
 - **Backups:** `pg_dump` schedule + git mirror — see [`ops/backup/`](ops/backup/).
 
+## Seeding the brain, and what the first scrape costs
+
+The server, Postgres, and the memory tools all run locally, so Tars itself adds no per-token
+cost. What spends your assistant's usage is the routines that read your history, and one of
+them dominates: the **first scrape** ([Bootstrap](docs/routines/bootstrap.md)), the only
+routine that reads in bulk. Everything after it is cheap by construction, because
+[Dream](docs/routines/dream.md) and [Briefing](docs/routines/briefing.md) resume from a marker
+and read only what changed since their last run. Their per-run cost stays roughly flat however
+large the brain gets.
+
+So there is one dial worth knowing about, and it is how much history Bootstrap reads.
+
+**Count before you sweep.** Ask for the scope first and the read second:
+
+> Before sweeping anything, report per source how much is in scope: chats and messages, mail
+> threads, calendar events, documents. Metadata only, no message bodies. Then stop and wait.
+
+Nobody can pick a sensible window for a WhatsApp account without knowing whether it holds four
+thousand messages or four hundred thousand. The counting pass is cheap and it replaces the
+guess with a number.
+
+**Then go in tiers.** Each tier is its own run and leaves the brain usefully better, so you can
+stop once recall feels good instead of committing to everything up front:
+
+| Tier  | Sources                                            | Depth                         |
+| ----- | -------------------------------------------------- | ----------------------------- |
+| **0** | calendar, contacts, meeting notes, project tracker | everything                    |
+| **1** | add mail and chat                                  | last 90 days                  |
+| **2** | widen mail and chat                                | as far back as you care about |
+
+Tier 0 first, because those sources are small, structured, and dense with facts worth keeping:
+who you meet, who you work with, what you are shipping. Chat and mail run high volume for the
+number of durable facts they yield, so they get a window rather than "everything". Re-running is
+safe, since entities are found-or-created by exact `(type, name)` and a later tier enriches
+instead of duplicating, and that property is what makes tiering work.
+
+Two more levers, both spelled out in the routine: reconcile per source rather than holding every
+candidate until the end, and put a cheap model on the sweep and your best one on the merge.
+
+Full detail and the routine prompt with these controls built in:
+[`docs/routines/bootstrap.md`](docs/routines/bootstrap.md).
+
 ## Privacy
 
 Default configuration is **fully local on the Mac** — Postgres on the box + local
