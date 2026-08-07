@@ -98,44 +98,16 @@ local model.
 
 Routine spec + copy-paste prompt: [`docs/routines/bootstrap.md`](routines/bootstrap.md).
 
-## 6. Choose an automation budget, then schedule the routines
+## 6. Put the routines on a schedule
 
-With the brain seeded, decide how much unattended agent work you want. Tars does not require a
-particular provider, model, or paid plan: choose from the limits and scheduling features your
-assistant actually exposes. Avoid comparing plans by name or hardcoding prices here — both change.
-
-| Option                       | Briefing                                                              | Dream                              | Best for                                                                                      |
-| ---------------------------- | --------------------------------------------------------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------- |
-| **Lean**                     | On demand, or weekday mornings over only the sources that need action | Weekly, during low-activity hours  | Keeping token/tool usage low and accepting that cross-source context may be a few days behind |
-| **Balanced** _(recommended)_ | Once each morning                                                     | Nightly                            | A current brain and digest without repeatedly polling throughout the day                      |
-| **Thorough**                 | Morning plus one later catch-up when needed                           | Nightly, across all useful sources | High-volume inboxes where completeness matters more than agent usage                          |
-
-The **Lean** option is the cost-efficient path. It still gives you a complete initial brain
-because Bootstrap is unchanged. After that, normal conversations write important facts as they
-happen; Briefing captures actionable updates when it runs; and the weekly Dream performs deeper
-integration and cleanup. Start there, then increase frequency only when you notice stale context.
-
-To keep any option efficient:
-
-- Connect and scan only sources you actually use. Every extra inbox or chat history adds work.
-- Prefer one bounded scheduled pass to frequent polling. Widen a missed run's time window instead
-  of rerunning the same window.
-- Keep routine output concise and let Tars checkpoints prevent rereading already-covered history.
-- Use sequential execution when your host cannot fan out work or when it meters parallel agent
-  calls separately. Use the documented multi-agent workflow when latency and coverage matter more.
-- Check the host's usage dashboard after the first week and adjust cadence; don't assume that
-  tokens, tool calls, or scheduled runs are billed the same way by every host.
-
-Schedule whichever routines your chosen option calls for:
+With the brain seeded, turn on the two recurring routines so Tars maintains itself:
 
 - **Dream** (nightly consolidation) — [`docs/routines/dream.md`](routines/dream.md)
 - **Briefing** (morning digest) — [`docs/routines/briefing.md`](routines/briefing.md)
 
-Both docs are host-agnostic routine specs. If your assistant has a scheduler, create scheduled
-tasks there. Otherwise use any trusted local scheduler that can launch an agent with access to
-the Tars and source-connector tools. Keep personal specifics (sources, cadence, timezone, and
-delivery preference) in a small drop-in outside the repo (for example `~/tars-dream.md`). The
-docs also include Claude Code-specific scheduling instructions as one concrete implementation.
+Both docs have an "Instantiating on Claude Code" section: use the `/schedule` skill, keep the
+in-repo doc as the abstract spec, and put your personal specifics (which sources, what time)
+in a small drop-in file outside the repo (e.g. `~/tars-dream.md`).
 
 ## 7. Verify end to end
 
@@ -143,12 +115,10 @@ docs also include Claude Code-specific scheduling instructions as one concrete i
 - In your assistant, confirm Tars is connected (`claude mcp list` in Claude Code).
 - Ask it something only your brain would know ("who's on my team?", "when's my next trip?")
   and confirm it answers from the real facts you seeded in steps 4–5.
-- Check the routines selected in step 6 show up in your scheduler and a first manual run finished
-  cleanly. For the Lean option, confirm the on-demand Briefing prompt is easy to launch even if it
-  is not scheduled.
+- Check the scheduled Dream/Briefing tasks show up and a first manual run finished cleanly.
 
-From here Tars maintains itself at the cadence you chose, and the brain grows every time you talk
-to your assistant.
+From here Tars runs itself: Dream consolidates every night, Briefing digests every morning,
+and the brain grows every time you talk to your assistant.
 
 ---
 
