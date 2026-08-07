@@ -167,16 +167,16 @@ locked out), installs deps, builds, and brings up Postgres. The only manual prer
 
 ### Make targets
 
-| Command                     | What it does                                                     |
-| --------------------------- | ---------------------------------------------------------------- |
-| `make setup`                | One-command install / re-provision (idempotent)                  |
-| `make install-service`      | Generate + bootstrap the launchd service (always-on)             |
-| `make uninstall-service`    | Stop and remove the launchd service                              |
-| `make start｜stop｜restart` | Server lifecycle via launchd                                     |
-| `make logs`                 | Tail the server logs                                             |
-| `make doctor`               | Health-check the whole stack, with fixes                         |
-| `make tunnel`               | Expose the OAuth listener for chat Claude (see `deploy/tunnel/`) |
-| `make check` / `make test`  | Run the green gate / the test suite                              |
+| Command                     | What it does                                                       |
+| --------------------------- | ------------------------------------------------------------------ |
+| `make setup`                | One-command install / re-provision (idempotent)                    |
+| `make install-service`      | Install the always-on service (launchd on macOS, systemd on Linux) |
+| `make uninstall-service`    | Stop and remove the always-on service                              |
+| `make start｜stop｜restart` | Service lifecycle (launchd on macOS, systemd on Linux)             |
+| `make logs`                 | Tail the server logs                                               |
+| `make doctor`               | Health-check the whole stack, with fixes                           |
+| `make tunnel`               | Expose the OAuth listener for chat Claude (see `deploy/tunnel/`)   |
+| `make check` / `make test`  | Run the green gate / the test suite                                |
 
 The launchd service runs [`ops/launchd/tars-server-run.sh`](ops/launchd/tars-server-run.sh),
 which boots Colima → Postgres → the server in order, so the whole stack returns on
@@ -215,8 +215,8 @@ pnpm start          # run the server once (foreground)
 ```
 
 For an **always-on** server on Linux, `make install-service` installs a **systemd**
-`--user` unit (auto-restart, boot persistence via lingering) — the launchd equivalent, same
-make targets (`start` / `stop` / `restart` / `logs` / `uninstall-service`). See
+`--user` unit (auto-restart, boot persistence via lingering): the launchd equivalent, with
+the same make targets (`start` / `stop` / `restart` / `logs` / `uninstall-service`). See
 [`ops/systemd/`](ops/systemd/README.md).
 
 Then connect Claude Code to the loopback listener:

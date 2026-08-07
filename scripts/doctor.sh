@@ -12,15 +12,13 @@ step "Tars doctor"
 
 # OS / service manager
 MGR="$(service_manager)"
-if is_macos; then
-  pass "macOS ($(sw_vers -productVersion 2>/dev/null || echo '?')) · launchd"
-elif [[ "$MGR" == "systemd" ]]; then
-  pass "Linux ($(. /etc/os-release 2>/dev/null; echo "${PRETTY_NAME:-Linux}")) · systemd --user"
-elif is_linux; then
-  fail "Linux without a reachable per-user systemd" "log in on a full session, or 'sudo loginctl enable-linger $USER'"
-else
-  fail "Unsupported OS — Tars ops assume macOS (launchd) or Linux (systemd)."
-fi
+case "$MGR" in
+  launchd) pass "macOS ($(sw_vers -productVersion 2>/dev/null || echo '?')), launchd" ;;
+  systemd) pass "Linux ($(. /etc/os-release 2>/dev/null; echo "${PRETTY_NAME:-Linux}")), systemd --user" ;;
+  *)
+    if is_linux; then fail "Linux without a reachable per-user systemd" "log in on a full session, or run 'sudo loginctl enable-linger $(id -un)'"
+    else fail "Unsupported OS. Tars ops assume macOS (launchd) or Linux (systemd)."; fi ;;
+esac
 
 # Node
 if have node && [[ "$(node -v | sed -E 's/^v([0-9]+).*/\1/')" -ge 20 ]]; then
@@ -48,12 +46,13 @@ if [[ "$pg_status" == "healthy" ]] || nc -z 127.0.0.1 5432 >/dev/null 2>&1; then
 else fail "Postgres not reachable" "pnpm db:up  (then check 'pnpm db:logs')"; fi
 
 # Ollama daemon
+ollama_hint="$(is_macos && echo 'brew services start ollama' || echo 'systemctl --user start ollama, or run: ollama serve')"
 if curl -s -m 3 http://localhost:11434/api/tags >/dev/null 2>&1; then
   pass "Ollama running on :11434"
   if ollama list 2>/dev/null | grep -q '^nomic-embed-text'; then
     pass "nomic-embed-text model pulled"
   else fail "nomic-embed-text not pulled" "ollama pull nomic-embed-text"; fi
-else fail "Ollama not running" "$(is_macos && echo 'brew services start ollama' || echo 'systemctl --user start ollama  (or run: ollama serve)')"; fi
+else fail "Ollama not running" "$ollama_hint"; fi
 
 # Server health (loopback)
 code="$(server_http_code 8787)"
@@ -61,16 +60,18 @@ if [[ "$code" != "000" ]]; then pass "Server up on :8787 (HTTP $code; 400 = heal
 else fail "Server not responding on :8787" "make start  (or 'make install-service')"; fi
 
 # Always-on service (launchd on macOS, systemd --user on Linux)
-if is_macos; then
-  if launchd_loaded; then pass "launchd service '$LAUNCHD_LABEL' loaded"
-  else fail "launchd service not loaded" "make install-service"; fi
-elif [[ "$MGR" == "systemd" ]]; then
-  if systemd_active; then pass "systemd service '$SYSTEMD_UNIT' active"
-  else fail "systemd service '$SYSTEMD_UNIT' not active" "make install-service"; fi
-  if loginctl show-user "$USER" -p Linger --value 2>/dev/null | grep -qx yes; then
-    pass "Lingering enabled (service survives logout/boot)"
-  else info "Lingering off — service stops at logout. 'sudo loginctl enable-linger $USER' to persist."; fi
-fi
+case "$MGR" in
+  launchd)
+    if launchd_loaded; then pass "launchd service '$LAUNCHD_LABEL' loaded"
+    else fail "launchd service not loaded" "make install-service"; fi ;;
+  systemd)
+    if systemd_active; then pass "systemd service '$SYSTEMD_UNIT' active"
+    elif systemd_loaded; then fail "systemd service '$SYSTEMD_UNIT' installed but not running" "make restart"
+    else fail "systemd service '$SYSTEMD_UNIT' not installed" "make install-service"; fi
+    if systemd_lingering; then pass "Lingering enabled (service survives logout/boot)"
+    else info "Lingering off: service stops at logout. Run 'sudo loginctl enable-linger $(id -un)' to persist."; fi ;;
+  *) fail "No service manager available to check the always-on service." ;;
+esac
 
 # Tunnel (informational — not a failure when loopback-only)
 if [[ -f "$HOME/.tars/public.env" ]]; then

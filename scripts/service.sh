@@ -1,47 +1,38 @@
 #!/usr/bin/env bash
 # make install-service | uninstall-service | start | stop | restart | logs
 # The always-on Tars server, supervised by the OS: launchd on macOS, systemd (per-user)
-# on Linux. Both fill a path-agnostic template with this machine's real repo + node paths,
-# then bootstrap and start the unit — same make targets either way.
+# on Linux. Both fill a path-agnostic template with this machine's real repo and node paths,
+# then bootstrap and start the unit, behind the same make targets.
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
 MGR="$(service_manager)"
 if [[ "$MGR" == "unsupported" ]]; then
-  err "No supported service manager here — need macOS (launchd) or Linux with a"
-  err "reachable per-user systemd instance. On a headless Linux box, enable lingering"
-  err "first:  sudo loginctl enable-linger $USER  — then re-run. See ops/systemd/README.md."
+  err "No supported service manager here. Need macOS (launchd) or Linux with a reachable"
+  err "per-user systemd instance. On a headless Linux box, enable lingering first:"
+  err "  sudo loginctl enable-linger $(id -un)"
+  err "then re-run. See ops/systemd/README.md."
   exit 1
 fi
-
-# node's bin dir feeds the unit's PATH so launchd/systemd (which don't inherit your shell
-# PATH, e.g. an nvm-managed node) can find node. Shared by both install paths.
-resolve_node_dir() {
-  have node || die "node not found on PATH — install Node 20+ (macOS: run 'make setup')."
-  dirname "$(command -v node)"
-}
 
 # ===== launchd (macOS) ======================================================
 
 launchd_install() {
-  local template="$REPO_ROOT/ops/launchd/com.tars.server.plist" target node_dir
+  local target node_dir
   target="$(launchd_target)"
   step "Installing launchd service ($LAUNCHD_LABEL)"
-  [[ -f "$template" ]] || die "Template not found: $template"
   node_dir="$(resolve_node_dir)"
   info "Repo:  $REPO_ROOT"
   info "Node:  $node_dir/node"
 
   mkdir -p "$HOME/Library/LaunchAgents"
-  # Substitute the template's placeholders with this machine's real paths. '|' delimiter
-  # avoids clashing with the '/' in paths (the repo path may contain a space — fine).
-  sed -e "s|/ABSOLUTE/PATH/TO/tars|$REPO_ROOT|g" \
-      -e "s|/ABSOLUTE/PATH/TO/node/bin|$node_dir|g" \
-      "$template" >"$LAUNCHD_PLIST"
+  render_template "$REPO_ROOT/ops/launchd/com.tars.server.plist" \
+    /ABSOLUTE/PATH/TO/tars "$REPO_ROOT" \
+    /ABSOLUTE/PATH/TO/node/bin "$node_dir" >"$LAUNCHD_PLIST"
   ok "Wrote $LAUNCHD_PLIST"
 
   # Reinstall cleanly: bootout any prior instance (legacy 'load' or modern 'bootstrap').
-  # bootout teardown is async, so a too-quick bootstrap can fail with EIO(5) — wait for the
+  # bootout teardown is async, so a too-quick bootstrap can fail with EIO(5): wait for the
   # service to actually disappear, then bootstrap with one retry.
   launchctl bootout "$target" >/dev/null 2>&1 || true
   for _ in $(seq 1 20); do launchd_loaded || break; sleep 0.5; done
@@ -99,35 +90,39 @@ launchd_logs() {
 # ===== systemd (Linux, per-user) ============================================
 
 systemd_install() {
-  local template="$REPO_ROOT/ops/systemd/tars-server.service" node_dir
+  local node_dir
   step "Installing systemd --user service ($SYSTEMD_UNIT)"
-  [[ -f "$template" ]] || die "Template not found: $template"
   node_dir="$(resolve_node_dir)"
   info "Repo:  $REPO_ROOT"
   info "Node:  $node_dir/node"
 
   mkdir -p "$SYSTEMD_USER_DIR"
-  # Same placeholder substitution as launchd — '|' delimiter is space/slash-safe.
-  sed -e "s|/ABSOLUTE/PATH/TO/tars|$REPO_ROOT|g" \
-      -e "s|/ABSOLUTE/PATH/TO/node/bin|$node_dir|g" \
-      "$template" >"$SYSTEMD_UNIT_PATH"
+  render_template "$REPO_ROOT/ops/systemd/tars-server.service" \
+    /ABSOLUTE/PATH/TO/tars "$REPO_ROOT" \
+    /ABSOLUTE/PATH/TO/node/bin "$node_dir" >"$SYSTEMD_UNIT_PATH"
   ok "Wrote $SYSTEMD_UNIT_PATH"
 
   # Lingering lets the unit run without an open login session (the launchd-on-login
-  # equivalent) — so the brain survives logout and comes back on boot. Best-effort: it
-  # needs one privileged call; without it the service still runs while you're logged in.
-  if loginctl show-user "$USER" -p Linger --value 2>/dev/null | grep -qx yes; then
+  # equivalent), so the brain survives logout and comes back on boot. Best-effort: it needs
+  # one privileged call. Keep stderr visible so a polkit prompt over SSH is not mistaken for
+  # a hang, and pass --no-ask-password so an unauthorized run fails fast instead of blocking.
+  if systemd_lingering; then
     ok "Lingering already enabled"
-  elif loginctl enable-linger "$USER" 2>/dev/null; then
+  elif loginctl --no-ask-password enable-linger "$(id -un)"; then
     ok "Enabled lingering (service runs without an active login)"
   else
-    warn "Could not enable lingering without privileges — the service will still run"
-    warn "while you're logged in. For boot/logout persistence, run once:"
-    warn "  sudo loginctl enable-linger $USER"
+    warn "Could not enable lingering (needs privileges). The service still runs while you"
+    warn "are logged in. For boot/logout persistence, run once:"
+    warn "  sudo loginctl enable-linger $(id -un)"
   fi
 
   systemctl --user daemon-reload
-  systemctl --user enable --now "$SYSTEMD_UNIT"
+  # enable (not --now) registers the boot-time want; restart then applies a freshly rendered
+  # unit to an already-running service and also starts it when inactive. Together these are
+  # the analogue of launchd's 'kickstart -k', so a reinstall after moving the repo or bumping
+  # node actually takes effect instead of leaving the live process on stale paths.
+  systemctl --user enable "$SYSTEMD_UNIT"
+  systemctl --user restart "$SYSTEMD_UNIT"
   ok "Service enabled and started"
   info "Logs: 'make logs'  ·  Health: 'make doctor'"
 }
@@ -163,9 +158,10 @@ systemd_logs() {
 }
 
 # ===== dispatch =============================================================
-# One make target, two backends. 'unsupported' is already rejected above, so the else
-# branch is always systemd on Linux.
-svc() { if is_macos; then "launchd_$1"; else "systemd_$1"; fi; }
+# service_manager() returns exactly the function-family prefix, so the dispatcher itself is
+# the seam: a third manager added there routes here automatically instead of silently
+# falling into a default. 'unsupported' is already rejected above.
+svc() { "${MGR}_$1"; }
 
 case "${1:-}" in
   install)   svc install ;;

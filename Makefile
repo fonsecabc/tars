@@ -16,10 +16,10 @@ init: ## Interactive setup wizard — pick engine / service / MCP / persona
 setup: ## Install prereqs, configure .env, build, and start Postgres (idempotent)
 	@bash $(SCRIPTS)/setup.sh
 
-install-service: ## Generate + bootstrap the launchd service (always-on)
+install-service: ## Install the always-on service (launchd on macOS, systemd on Linux)
 	@bash $(SCRIPTS)/service.sh install
 
-uninstall-service: ## Stop and remove the launchd service
+uninstall-service: ## Stop and remove the always-on service
 	@bash $(SCRIPTS)/service.sh uninstall
 
 install-voice: ## Install the advanced hands-free voice stack (macOS: mic + local TTS)

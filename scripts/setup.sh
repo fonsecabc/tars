@@ -4,7 +4,7 @@
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
-require_macos
+require_macos "'make setup' (Homebrew + Colima provisioning)"
 
 # --- 1. Prerequisites (Homebrew packages) ----------------------------------
 step "Checking prerequisites"

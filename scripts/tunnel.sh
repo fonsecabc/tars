@@ -11,7 +11,7 @@
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
-require_macos
+require_macos "'make tunnel' (Tailscale Funnel)"
 
 # Locate the tailscale CLI (the standalone app ships it inside the bundle).
 TS=""

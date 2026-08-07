@@ -33,10 +33,15 @@ model. When a step is only for power users, it says so — skip it.
 
 ```bash
 git clone https://github.com/fonsecabc/tars.git && cd tars
-make setup            # asks ONE question, installs prereqs, configures + starts everything
-make install-service  # keep Tars running 24/7 in the background
+make setup            # macOS: one question, installs prereqs, configures + starts everything
+make install-service  # keep Tars running 24/7 (launchd on macOS, systemd on Linux)
 make doctor           # check everything is green
 ```
+
+> **On Linux**, `make setup` does not apply (it provisions via Homebrew + Colima). Install
+> Docker, Node 20+, and pnpm natively, run `pnpm install && pnpm build && pnpm db:up`, then
+> `make install-service` and `make doctor` work exactly as above (systemd). See the Linux
+> section of the README.
 
 `make setup` first **looks at your Mac** (memory, chip) and asks how you want TARS to remember:
 
@@ -50,7 +55,7 @@ You can skip the question by setting it ahead of time: `TARS_PROFILE=simple make
 `full`). Either way the brain ships **empty** — no data until you add it in steps 4–5.
 
 Details, the Linux/dev path, and connecting your assistant to Tars:
-[`README.md`](../README.md#install-macos).
+[`README.md`](../README.md#install).
 
 ## 2. Become TARS (wire the persona)
 

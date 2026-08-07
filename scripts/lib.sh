@@ -26,12 +26,12 @@ die()  { err "$*"; exit 1; }
 is_macos() { [[ "$(uname -s)" == "Darwin" ]]; }
 is_linux() { [[ "$(uname -s)" == "Linux" ]]; }
 
-# service_manager — which init system supervises Tars's always-on service here.
+# service_manager: which init system supervises Tars's always-on service here.
 #   "launchd"     macOS.
 #   "systemd"     Linux with a reachable per-user systemd instance (the common case;
-#                 needs a user D-Bus session — SSH-only logins may need lingering, see
+#                 needs a user D-Bus session, and SSH-only logins may need lingering, see
 #                 ops/systemd/README.md).
-#   "unsupported" anything else — service.sh/doctor.sh degrade with a clear pointer.
+#   "unsupported" anything else; service.sh/doctor.sh degrade with a clear pointer.
 # Printed to stdout alone; callers do `mgr="$(service_manager)"`.
 service_manager() {
   if is_macos; then
@@ -43,17 +43,16 @@ service_manager() {
   fi
 }
 
-# Bail early where a script genuinely needs macOS. Provisioning (Homebrew + Colima)
-# is still Mac-only; the always-on SERVICE, however, runs on Linux too — so point
-# Linux users at what IS supported instead of a dead end.
+# require_macos [capability]: gate a Mac-only capability (provisioning, tunnel, voice).
+# Names <capability> in the message so a Linux user running 'make tunnel' is not told the
+# always-on service is what is unsupported. The service layer itself runs on Linux; the
+# README's Linux section documents what is supported natively.
 require_macos() {
-  if ! is_macos; then
-    err "'make setup' provisions via Homebrew + Colima, which target macOS."
-    err "On Linux: install Docker + Node 20+ (+ Ollama for the Full profile) natively,"
-    err "then 'pnpm install && pnpm build && pnpm db:up'. The always-on service is"
-    err "supported — run 'make install-service' (systemd). See ops/systemd/README.md."
-    exit 1
-  fi
+  is_macos && return 0
+  local what="${1:-This command}"
+  err "$what targets macOS (Homebrew + Colima + launchd) and has no Linux path."
+  err "See the Linux section in README.md for what is supported natively."
+  exit 1
 }
 
 # --- Machine assessment -----------------------------------------------------
@@ -133,6 +132,32 @@ brew_install() {
     brew install "$formula"
     ok "$formula installed"
   fi
+}
+
+# --- Templating & node resolution ------------------------------------------
+# node's bin dir feeds a service unit's PATH so launchd/systemd (which do not inherit your
+# shell PATH, e.g. an nvm-managed node) can find node. Shared by service.sh and voice.sh.
+resolve_node_dir() {
+  have node || die "node not found on PATH. Install Node 20+ (macOS: run 'make setup')."
+  dirname "$(command -v node)"
+}
+
+# render_template <template> [<placeholder> <value>]...: print <template> to stdout with
+# each <placeholder> replaced by <value>. Values are escaped for sed's replacement side
+# (backslash, &, and the '|' delimiter), so a repo path with spaces or a key with sed
+# metacharacters renders correctly. This is the single home for the /ABSOLUTE/PATH/TO
+# substitution that service.sh and voice.sh both do, keeping the escaping from drifting.
+render_template() {
+  local template="$1"; shift
+  [[ -f "$template" ]] || die "Template not found: $template"
+  local ph val
+  local args=()
+  while [[ $# -gt 0 ]]; do
+    ph="$1"; val="$2"; shift 2
+    val="${val//\\/\\\\}"; val="${val//&/\\&}"; val="${val//|/\\|}"
+    args+=(-e "s|${ph}|${val}|g")
+  done
+  sed "${args[@]}" "$template"
 }
 
 # --- Postgres / Docker volume awareness ------------------------------------
@@ -255,8 +280,11 @@ SYSTEMD_USER_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 SYSTEMD_UNIT_PATH="$SYSTEMD_USER_DIR/$SYSTEMD_UNIT"
 systemd_installed() { [[ -f "$SYSTEMD_UNIT_PATH" ]]; }
 systemd_active()    { systemctl --user is-active --quiet "$SYSTEMD_UNIT"; }
-# "loaded" ≈ launchd_loaded: known to the manager — enabled at boot or running now.
+# "loaded" is the launchd_loaded analogue: known to the manager, whether enabled at boot or
+# only running now. Used by doctor and by init.sh's status JSON.
 systemd_loaded()    { systemctl --user is-enabled --quiet "$SYSTEMD_UNIT" 2>/dev/null || systemd_active; }
+# Lingering keeps the per-user manager (and its units) alive without an open login session.
+systemd_lingering() { [[ "$(loginctl show-user "$(id -un)" -p Linger --value 2>/dev/null)" == yes ]]; }
 
 # --- Server health ----------------------------------------------------------
 # The loopback MCP endpoint answers 400 to a bare GET (no MCP session) when up.
