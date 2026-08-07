@@ -28,3 +28,5 @@ plist. `com.tars.server.plist` is a **template** — don't hand-install it.
 - The Mac must not sleep (System Settings → Energy, or `caffeinate`). Tailscale Funnel +
   this agent assume the machine is always on.
 - Backups (scheduled `pg_dump` + the git mirror) are in `ops/backup/`.
+- On **Linux**, the equivalent lives in `ops/systemd/` (a `systemctl --user` unit) and the
+  same `make install-service` installs it. This launchd path is macOS-only.

@@ -106,24 +106,29 @@ has_tty() { [[ -r /dev/tty && $ASSUME_YES == 0 ]]; }
 
 # --- Status (introspection for the agent) --------------------------------------------------
 report_status() {
-  local os pg srv ld mcpreg pfile pinst
+  local os pg srv svc mcpreg pfile pinst
   os=$(is_macos && echo macos || echo linux)
   pg=$(docker inspect -f '{{.State.Health.Status}}' tars-postgres 2>/dev/null || echo absent)
   srv=$(server_up && echo up || echo down)
-  ld='n/a'; is_macos && { launchd_loaded && ld=loaded || ld=unloaded; }
+  # 'service' spans both managers so agent-driven onboarding can verify the unit on Linux too.
+  svc='n/a'
+  case "$(service_manager)" in
+    launchd) launchd_loaded && svc=loaded || svc=unloaded ;;
+    systemd) systemd_loaded && svc=loaded || svc=unloaded ;;
+  esac
   mcpreg=no; have claude && claude mcp list 2>/dev/null | grep -q '\btars\b' && mcpreg=yes
   pfile=no; [[ -f "$PERSONALIZED_PROMPT" ]] && pfile=yes
   pinst=no; [[ -f "$CLAUDE_MD" ]] && grep -q 'TARS:BEGIN' "$CLAUDE_MD" 2>/dev/null && pinst=yes
   if [[ $JSON == 1 ]]; then
-    printf '{"os":"%s","postgres":"%s","server":"%s","launchd":"%s","mcpRegistered":%s,"personaFile":%s,"personaInstalled":%s,"mcpUrl":"%s"}\n' \
-      "$os" "$pg" "$srv" "$ld" \
+    printf '{"os":"%s","postgres":"%s","server":"%s","service":"%s","mcpRegistered":%s,"personaFile":%s,"personaInstalled":%s,"mcpUrl":"%s"}\n' \
+      "$os" "$pg" "$srv" "$svc" \
       "$([[ $mcpreg == yes ]] && echo true || echo false)" \
       "$([[ $pfile == yes ]] && echo true || echo false)" \
       "$([[ $pinst == yes ]] && echo true || echo false)" \
       "$MCP_URL" >&4
   else
     step "Tars status"
-    info "os=$os  postgres=$pg  server=$srv  launchd=$ld"
+    info "os=$os  postgres=$pg  server=$srv  service=$svc"
     info "mcpRegistered=$mcpreg  personaFile=$pfile  personaInstalled=$pinst"
   fi
 }
@@ -208,8 +213,12 @@ do_engine() {
 
 do_service() {
   step "Always-on service"
-  if ! is_macos; then warn "launchd is macOS-only; supervise 'pnpm start' with systemd (deploy/cloud/)."; R_service=unsupported; return; fi
-  if [[ $DRY_RUN == 1 ]]; then info "(dry-run) would install launchd service"; R_service=planned; return; fi
+  local mgr; mgr="$(service_manager)"
+  if [[ "$mgr" == unsupported ]]; then
+    warn "No supported service manager (need macOS launchd or Linux systemd --user). See ops/systemd/README.md."
+    R_service=unsupported; return
+  fi
+  if [[ $DRY_RUN == 1 ]]; then info "(dry-run) would install the always-on service ($mgr)"; R_service=planned; return; fi
   bash "$REPO_ROOT/scripts/service.sh" install; R_service=ok
 }
 
@@ -318,7 +327,7 @@ info "Plan: engine=$SEL_engine service=$SEL_service mcp=$SEL_mcp persona=$SEL_pe
 [[ $SEL_mcp     == 1 ]] && do_mcp
 [[ $SEL_persona == 1 ]] && do_persona
 
-if [[ $DRY_RUN == 0 && $NO_VERIFY == 0 && $SEL_engine == 1 ]] && is_macos; then
+if [[ $DRY_RUN == 0 && $NO_VERIFY == 0 && $SEL_engine == 1 ]]; then
   step "Verifying"; bash "$REPO_ROOT/scripts/doctor.sh" || warn "Doctor reported issues."
 fi
 

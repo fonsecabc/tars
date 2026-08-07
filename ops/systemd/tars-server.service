@@ -1,0 +1,36 @@
+# Keep the Tars server running 24/7 with auto-restart. This is the systemd (Linux) analogue
+# of ops/launchd/com.tars.server.plist. TEMPLATE: 'make install-service' fills in the
+# /ABSOLUTE/PATH/TO/tars paths and /ABSOLUTE/PATH/TO/node/bin (from 'which node') and
+# installs it to ~/.config/systemd/user, so do not hand-install it. The unit runs
+# tars-server-run.sh, which brings up Postgres (docker compose) in order and then execs the
+# server, so the whole stack comes back on login/boot (with lingering enabled).
+# Config and secrets come from <repo>/.env (dotenv reads it from WorkingDirectory), including
+# EMBEDDING_PROVIDER, so the unit deliberately sets no provider of its own.
+[Unit]
+Description=Tars self-hosted second brain (always-on server)
+Documentation=https://github.com/fonsecabc/tars
+# Latch into 'failed' if the boot sequence keeps aborting, rather than respawning forever.
+StartLimitIntervalSec=600
+StartLimitBurst=5
+
+[Service]
+Type=simple
+# WorkingDirectory takes a single literal path (systemd does not word-split it), so it needs
+# no quoting even when the repo path contains spaces.
+WorkingDirectory=/ABSOLUTE/PATH/TO/tars
+# ExecStart IS command-line parsed, so the script path MUST be quoted or a repo path with a
+# space would split into separate arguments.
+ExecStart=/bin/bash "/ABSOLUTE/PATH/TO/tars/ops/systemd/tars-server-run.sh"
+# systemd does not inherit your shell PATH (nvm/corepack node lives there); lead with node's
+# bin dir, filled from 'which node' at install. Environment= is a space-separated list, so
+# the whole assignment is quoted to keep a spaced node path in one piece.
+Environment="PATH=/ABSOLUTE/PATH/TO/node/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+Restart=always
+RestartSec=10
+# Logs go to the journal: 'journalctl --user -u tars-server -f' (or 'make logs').
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=tars-server
+
+[Install]
+WantedBy=default.target

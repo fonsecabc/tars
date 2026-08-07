@@ -7,7 +7,7 @@
 set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
-require_macos
+require_macos "the voice stack"
 
 LA="$HOME/Library/LaunchAgents"
 VOICE_LABELS=(com.tars.ears com.tars.inject com.tars.router com.tars.speak com.tars.tts-kokoro)
@@ -29,9 +29,8 @@ check_prereqs() {
 
 install_voice() {
   step "Installing the voice stack (5 launchd agents)"
-  have node || die "node not found — run 'make setup' first."
   local node_dir key
-  node_dir="$(dirname "$(command -v node)")"
+  node_dir="$(resolve_node_dir)"
   key="$(openrouter_key)"
   [[ -z "$key" ]] && warn "No OPENROUTER_API_KEY in .env — the router will use its local Ollama fallback (set the key + rerun to use Claude)."
 
@@ -44,11 +43,11 @@ install_voice() {
   for label in "${VOICE_LABELS[@]}"; do
     plist="$REPO_ROOT/ops/launchd/$label.plist"
     dst="$LA/$label.plist"
-    sed -e "s|/ABSOLUTE/PATH/TO/tars|$REPO_ROOT|g" \
-        -e "s|/ABSOLUTE/PATH/TO/node/bin|$node_dir|g" \
-        -e "s|/ABSOLUTE/PATH/TO/HOME|$HOME|g" \
-        -e "s|YOUR_OPENROUTER_API_KEY|${key//|/\\|}|g" \
-        "$plist" > "$dst"
+    render_template "$plist" \
+      /ABSOLUTE/PATH/TO/tars "$REPO_ROOT" \
+      /ABSOLUTE/PATH/TO/node/bin "$node_dir" \
+      /ABSOLUTE/PATH/TO/HOME "$HOME" \
+      YOUR_OPENROUTER_API_KEY "$key" > "$dst"
     launchctl bootout "$(target "$label")" >/dev/null 2>&1 || true
     launchctl bootstrap "gui/$(id -u)" "$dst" 2>/dev/null || { sleep 1; launchctl bootstrap "gui/$(id -u)" "$dst"; }
     launchctl enable "$(target "$label")" >/dev/null 2>&1 || true
